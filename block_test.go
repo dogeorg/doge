@@ -1,7 +1,6 @@
 package doge
 
 import (
-	"log"
 	"reflect"
 	"testing"
 )
@@ -31,7 +30,7 @@ func TestBlock(t *testing.T) {
 		1045842885,
 	}
 	b := DecodeBlock(hx2b(hex))
-	log.Printf("Block: ver %x prev %v merkel %v ntx %v", b.Header.Version, revhex(b.Header.PrevBlock), revhex(b.Header.MerkleRoot), len(b.Tx))
+	// log.Printf("Block: ver %x prev %v merkel %v ntx %v", b.Header.Version, revhex(b.Header.PrevBlock), revhex(b.Header.MerkleRoot), len(b.Tx))
 	if len(b.Tx) != expectTxs {
 		t.Errorf("TestBlock: wrong number of transactions: %d vs %d", len(b.Tx), expectTxs)
 	}
