@@ -7,11 +7,13 @@
 package bip39
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/sha512"
 	"errors"
 	"strings"
 
+	"github.com/dogeorg/doge/wrapped"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/text/unicode/norm"
 )
@@ -49,20 +51,52 @@ var LangSpace = map[string]string{
 }
 
 var ErrBadEntropy = errors.New("entropy must be 128-256 bits, divisible by 32")
+var ErrOutOfEntropy, wrapOutOfEntropy = wrapped.New("not enough entropy available in the OS entropy pool")
 var ErrWrongWord = errors.New("wrong word in mnemonic phrase: not on the wordlist")
 var ErrWrongChecksum = errors.New("wrong mnemonic phrase: checksum doesn't match")
 var ErrWrongLength = errors.New("wrong mnemonic length: must be 12, 15, 18, 21 or 24 words")
 
-// GenerateMnemonic generates a 12-24 word mnemonic phrase with 128-256 bits of entrpoy.
+// GenerateRandomMnemonic generates a 12-24 word mnemonic phrase with 128-256 bits of entropy.
 //
 // Implements BIP-39 as described in https://en.bitcoin.it/wiki/BIP_0039
 //
 // The number of entropy bits must be between 128 and 256 inclusive, and divisible
 // by 32 as per BIP-39.
 //
-// The passphrase is an optional string used to protect the mnemonic phrase.
+// The passphrase is an optional string used to protect the seed derived from
+// the mnemonic phrase (via PBKDF2)
 //
-// Returns the generated mnemonic words as a string, and the generated seed.
+// Returns the generated mnemonic phrase and the generated seed.
+//
+// Can return the following errors:
+// ErrBadEntropy (entropy length is incorrect; expects 128,160,192,224,256)
+// ErrOutOfEntropy (the OS entropy source is exhausted)
+func GenerateRandomMnemonic(entropy int, passphrase string, wordlist []string, space string) (mnemonic string, seed []byte, err error) {
+	if entropy < 128 || entropy > 256 || entropy%32 != 0 {
+		return "", nil, ErrBadEntropy
+	}
+	entBytes := make([]byte, entropy/8)
+	_, err = rand.Read(entBytes[:])
+	if err != nil {
+		return "", nil, wrapOutOfEntropy(err)
+	}
+	return MnemonicFromEntropy(entBytes, passphrase, wordlist, space)
+}
+
+// MnemonicFromEntropy converts 128-256 bits of entropy to a 12-24 word mnemonic phrase.
+//
+// Implements BIP-39 as described in https://en.bitcoin.it/wiki/BIP_0039
+//
+// The number of entropy bits must be between 128 and 256 inclusive, and divisible
+// by 32 as per BIP-39.
+//
+// The passphrase is an optional string used to protect the seed derived from
+// the mnemonic phrase (via PBKDF2)
+//
+// Returns the encoded mnemonic phrase and the generated seed.
+//
+// Can return the following errors:
+// ErrBadEntropy (entropy length is incorrect; expects 16,20,24,28,32 bytes)
 func MnemonicFromEntropy(entropy []byte, passphrase string, wordlist []string, space string) (mnemonic string, seed []byte, err error) {
 	// The mnemonic must encode entropy [ENT] in a multiple of 32 ENT.
 	// The allowed size of ENT is 128-256 ENT.
@@ -123,7 +157,13 @@ func MnemonicFromEntropy(entropy []byte, passphrase string, wordlist []string, s
 //
 // Implements BIP-39 as described in https://en.bitcoin.it/wiki/BIP_0039
 //
-// This function verifies the checksum bits included in the mnemonic words.
+// This function verifies the 12-24 words are on the wordlist, and verifies the
+// checksum bits included in the mnemonic phrase.
+//
+// Can return the following errors:
+// ErrWrongLength (wrong number of words; expects 12,15,18,21,24)
+// ErrWrongWord (one or more words are not on the word-list)
+// ErrWrongChecksum (one or more of the words is incorrect, leading to a checksum mismatch)
 func SeedFromMnemonic(mnemonic string, passphrase string, wordlist []string) (seed []byte, err error) {
 	// mnemonic input may not be NFKD
 	// this also normalizes Ideographic Space (u3000) to ACSII space
@@ -172,7 +212,7 @@ func SeedFromMnemonic(mnemonic string, passphrase string, wordlist []string) (se
 		return nil, ErrWrongChecksum
 	}
 
-	// create a binary seed from the mnemonic (as above)
+	// create a binary seed from the mnemonic (as described above)
 	saltNFKD := norm.NFKD.Bytes([]byte("mnemonic" + passphrase)) // passphrase may not be NFKD
 	seed = pbkdf2.Key([]byte(mnemonic), saltNFKD, 2048, 64, sha512.New)
 
