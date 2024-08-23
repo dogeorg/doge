@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/dogeorg/doge/bip39"
@@ -39,14 +40,15 @@ func TestBip39(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
+			space := bip39.LangSpace[lang]
 
 			// MnemonicFromEntropy should generate the same mnemonic and seed from the entropy
-			resMnemonic, resSeed, err := bip39.MnemonicFromEntropy(entropy, password, bip39.WordLists[lang], bip39.LangSpace[lang])
+			resMnemonic, resSeed, err := bip39.MnemonicFromEntropy(entropy, password, bip39.WordLists[lang])
 			if err != nil {
 				t.Errorf("MnemonicFromEntropy: %v", err)
 				continue
 			}
-			if resMnemonic != mnemonic {
+			if strings.Join(resMnemonic, space) != mnemonic {
 				t.Errorf("test %v:%v: incorrect mnemonic::\n'%v' vs\n'%v'", lang, tno, resMnemonic, mnemonic)
 			}
 			if !bytes.Equal(resSeed, seed) {

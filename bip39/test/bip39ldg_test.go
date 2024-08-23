@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 	"testing"
 
 	"github.com/dogeorg/doge/bip39"
@@ -301,7 +302,8 @@ func TestBip39Libdogeoin(t *testing.T) {
 			if bip39.WordLists[lang] == nil {
 				panic("bad lang" + lang)
 			}
-			res_seed, err := bip39.SeedFromMnemonic(mnemonic, password, bip39.WordLists[lang])
+			words := strings.Split(mnemonic, bip39.LangSpace[lang])
+			res_seed, err := bip39.SeedFromMnemonic(words, password, bip39.WordLists[lang])
 			if err != nil {
 				t.Errorf("SeedFromMnemonic: %v", err)
 				continue
@@ -370,12 +372,12 @@ func TestBip39KnownEntropy(t *testing.T) {
 		if bip39.WordLists[lang] == nil {
 			panic("bad lang" + lang)
 		}
-		resMnemonic, _, err := bip39.MnemonicFromEntropy(entropy, "", bip39.WordLists[lang], bip39.LangSpace[lang])
+		resMnemonic, _, err := bip39.MnemonicFromEntropy(entropy, "", bip39.WordLists[lang])
 		if err != nil {
 			t.Errorf("SeedFromMnemonic: %v", err)
 			continue
 		}
-		if resMnemonic != mnemonic {
+		if strings.Join(resMnemonic, bip39.LangSpace[lang]) != mnemonic {
 			t.Errorf("test %v:%v: incorrect mnemonic: '%v' vs '%v'", lang, tno, resMnemonic, mnemonic)
 		}
 	}
@@ -454,7 +456,7 @@ func entropyTest(t *testing.T, size int, lang string) {
 	if err != nil {
 		panic(err)
 	}
-	_, _, err = bip39.MnemonicFromEntropy(entropy, "", bip39.EnglishWordList, " ")
+	_, _, err = bip39.MnemonicFromEntropy(entropy, "", bip39.EnglishWordList)
 	if err != nil {
 		t.Errorf("MnemonicFromEntropy: %v (with %v entropy %v lang)", err, size, lang)
 	}

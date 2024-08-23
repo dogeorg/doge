@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/dogeorg/doge/bip39"
@@ -35,7 +36,7 @@ func TestBip39_JP(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		outSeed, err := bip39.SeedFromMnemonic(mnemonic, password, wordlist)
+		outSeed, err := bip39.SeedFromMnemonic(strings.Split(mnemonic, space), password, wordlist)
 		if err != nil {
 			t.Errorf("SeedFromMnemonic: %v", err)
 			continue
@@ -49,7 +50,7 @@ func TestBip39_JP(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		resMnemonic, resSeed, err := bip39.MnemonicFromEntropy(entropy, password, wordlist, space)
+		resMnemonic, resSeed, err := bip39.MnemonicFromEntropy(entropy, password, wordlist)
 		if err != nil {
 			t.Errorf("MnemonicFromEntropy: %v", err)
 			continue
@@ -57,8 +58,8 @@ func TestBip39_JP(t *testing.T) {
 		if !bytes.Equal(resSeed, seed) {
 			t.Errorf("test %v:%v: MnemonicFromEntropy: incorrect seed: '%v' vs '%v'", lang, tno, hex.EncodeToString(outSeed), seedHex)
 		}
-		resMnemonicNFKD := norm.NFKD.String(resMnemonic) // returned mnemonic is normalized, but has Ideographic Spaces
-		srcMnemonicNFKD := norm.NFKD.String(mnemonic)    // test-vector mnemonics are de-normalized
+		resMnemonicNFKD := norm.NFKD.String(strings.Join(resMnemonic, " ")) // returned mnemonic is normalized
+		srcMnemonicNFKD := norm.NFKD.String(mnemonic)                       // test-vector mnemonics are de-normalized
 		if resMnemonicNFKD != srcMnemonicNFKD {
 			t.Errorf("test %v:%v: MnemonicFromEntropy: incorrect mnemonic:\n'%v' vs\n'%v'", lang, tno, resMnemonicNFKD, srcMnemonicNFKD)
 		}
