@@ -5,7 +5,7 @@ import "fmt"
 func EncodeECPrivKeyWIF(key ECPrivKey, chain *ChainParams) string {
 	// https://en.bitcoin.it/wiki/Wallet_import_format
 	data := [2 + 32 + 4]byte{}
-	data[0] = chain.pkey_prefix
+	data[0] = chain.PKey_Prefix
 	if copy(data[1:], key) != ECPrivKeyLen {
 		panic("EncodeECPrivKeyWIF: wrong key length")
 	}
@@ -17,7 +17,7 @@ func EncodeECPrivKeyWIF(key ECPrivKey, chain *ChainParams) string {
 
 func EncodeECPrivKeyUncompressedWIF(key ECPrivKey, chain *ChainParams) string {
 	data := [1 + 32 + 4]byte{}
-	data[0] = chain.pkey_prefix
+	data[0] = chain.PKey_Prefix
 	if copy(data[1:], key) != ECPrivKeyLen {
 		panic("EncodeECPrivKeyUncompressedWIF: wrong key length")
 	}
@@ -36,7 +36,7 @@ func DecodeECPrivKeyWIF(str string, chain *ChainParams) (ec_priv_key ECPrivKey, 
 	if chain == nil {
 		chain = ChainFromWIFPrefix(data, true)
 	}
-	if data[0] != chain.pkey_prefix {
+	if data[0] != chain.PKey_Prefix {
 		err = fmt.Errorf("DecodeECPrivKeyWIF: wrong key prefix")
 		return nil, nil, err
 	}

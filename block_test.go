@@ -48,8 +48,3 @@ func collectOutVals(b *Block) (outVals []int64) {
 	}
 	return
 }
-
-func revhex(hash []byte) string {
-	reverseInPlace(hash)
-	return HexEncode(hash)
-}

@@ -372,7 +372,7 @@ func TestBip39KnownEntropy(t *testing.T) {
 		if bip39.WordLists[lang] == nil {
 			panic("bad lang" + lang)
 		}
-		resMnemonic, _, err := bip39.MnemonicFromEntropy(entropy, "", bip39.WordLists[lang])
+		resMnemonic, err := bip39.MnemonicFromEntropy(entropy, "", bip39.WordLists[lang])
 		if err != nil {
 			t.Errorf("SeedFromMnemonic: %v", err)
 			continue
@@ -456,7 +456,7 @@ func entropyTest(t *testing.T, size int, lang string) {
 	if err != nil {
 		panic(err)
 	}
-	_, _, err = bip39.MnemonicFromEntropy(entropy, "", bip39.EnglishWordList)
+	_, err = bip39.MnemonicFromEntropy(entropy, "", bip39.EnglishWordList)
 	if err != nil {
 		t.Errorf("MnemonicFromEntropy: %v (with %v entropy %v lang)", err, size, lang)
 	}

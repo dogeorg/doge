@@ -1,22 +1,18 @@
 package doge
 
 import (
-	"bytes"
 	"crypto/rand"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-type KeyBits = int // keyECPriv,keyECPub,keyBip32Priv,keyBip32Pub,dogeMainNet,dogeTestNet
+type KeyType = int // keyECPriv,keyECPub,keyBip32Priv,keyBip32Pub,dogeMainNet,dogeTestNet
 const (
-	keyNone      = 0
-	keyECPriv    = 1
-	keyECPub     = 2
-	keyBip32Priv = 4
-	keyBip32Pub  = 8
-	mainNetDoge  = 16
-	testNetDoge  = 32
-	mainNetBtc   = 64
+	keyNone      KeyType = 0
+	keyECPriv    KeyType = 1
+	keyECPub     KeyType = 2
+	keyBip32Priv KeyType = 3
+	keyBip32Pub  KeyType = 4
 )
 
 const (
@@ -39,7 +35,8 @@ func clear(slice []byte) {
 }
 
 func GenerateECPrivKey() (ECPrivKey, error) {
-	// can return an error if entropy is not available
+	// GeneratePrivateKeyFromRand ensures the returned key satisfies ECKeyIsValid.
+	// This can return an error if entropy is not available.
 	pk, err := secp256k1.GeneratePrivateKeyFromRand(rand.Reader)
 	if err != nil {
 		return nil, err
@@ -51,7 +48,11 @@ func GenerateECPrivKey() (ECPrivKey, error) {
 
 func ECPubKeyFromECPrivKey(pk ECPrivKey) ECPubKeyCompressed {
 	key := secp256k1.PrivKeyFromBytes(pk)
-	pub := key.PubKey().SerializeCompressed()
+	K := key.PubKey()
+	if !K.IsOnCurve() {
+		panic("ECPubKeyFromECPrivKey: public key is not on the curve!")
+	}
+	pub := K.SerializeCompressed()
 	key.Zero() // clear key for security.
 	return pub
 }
@@ -60,18 +61,13 @@ func ECKeyIsValid(pk ECPrivKey) bool {
 	if len(pk) != ECPrivKeyLen {
 		return false
 	}
-	// From secp256k1.PrivKeyFromBytes:
+	// If overflow != 0, it means the ECPrivKey is >= N (the order
+	// of the secp256k1 curve) which is not a valid private key.
+	var modN secp256k1.ModNScalar
+	overflow := modN.SetBytes((*[32]byte)(pk)) // Go 1.17 cast to underlying array
 	// "Further, 0 is not a valid private key. It is up to the caller
 	// to provide a value in the appropriate range of [1, N-1]."
-	if bytes.Equal(pk, zeroBytes[0:ECPrivKeyLen]) {
-		return false // zero is not a valid key.
-	}
-	// If overflow is true, it means the ECPrivKey is >= N (the order
-	// of the secp256k1 curve) which is not a strong private key.
-	// PrivKeyFromBytes will accept keys >= N, but it will reduce them
-	// modulo N, so they become equivalent to a lower key value.
-	var modN secp256k1.ModNScalar
-	overflow := modN.SetByteSlice(pk)
+	overflow |= modN.IsZeroBit()
 	modN.Zero() // clear key for security.
-	return !overflow
+	return overflow == 0
 }

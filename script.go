@@ -23,7 +23,7 @@ func ClassifyScript(script []byte, chain *ChainParams) (ScriptType, Address) {
 	// P2PKH: OP_DUP OP_HASH160 <pubKeyHash:20> OP_EQUALVERIFY OP_CHECKSIG (25)
 	if L == 25 && script[0] == OP_DUP && script[1] == OP_HASH160 && script[2] == 20 &&
 		script[23] == OP_EQUALVERIFY && script[24] == OP_CHECKSIG {
-		addr := Hash160toAddress(script[3:23], chain.p2pkh_address_prefix)
+		addr := Hash160toAddress(script[3:23], chain.P2PKH_Address_Prefix)
 		return ScriptTypeP2PKH, addr
 	}
 	// P2PK: <compressedPubKey:33> OP_CHECKSIG
@@ -38,7 +38,7 @@ func ClassifyScript(script []byte, chain *ChainParams) (ScriptType, Address) {
 	}
 	// P2SH: OP_HASH160 0x14 <hash> OP_EQUAL
 	if L == 23 && script[0] == OP_HASH160 && script[1] == 20 && script[22] == OP_EQUAL {
-		addr := Hash160toAddress(script[2:22], chain.p2sh_address_prefix)
+		addr := Hash160toAddress(script[2:22], chain.P2SH_Address_Prefix)
 		return ScriptTypeP2SH, addr
 	}
 	// OP_m <pubkey*n> OP_n OP_CHECKMULTISIG

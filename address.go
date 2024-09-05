@@ -24,7 +24,7 @@ func PubKeyToP2PKH(key []byte, chain *ChainParams) (Address, error) {
 	}
 	payload := Hash160(key[:])
 	ver_hash := [1 + 20 + 4]byte{}
-	ver_hash[0] = chain.p2pkh_address_prefix
+	ver_hash[0] = chain.P2PKH_Address_Prefix
 	if copy(ver_hash[1:], payload) != 20 {
 		panic("PubKeyToAddress: wrong RIPEMD-160 length")
 	}
@@ -37,7 +37,7 @@ func ScriptToP2SH(redeemScript []byte, chain *ChainParams) Address {
 	}
 	payload := Hash160(redeemScript)
 	ver_hash := [1 + 20 + 4]byte{}
-	ver_hash[0] = chain.p2sh_address_prefix
+	ver_hash[0] = chain.P2SH_Address_Prefix
 	if copy(ver_hash[1:], payload) != 20 {
 		panic("ScriptToP2SH: wrong RIPEMD-160 length")
 	}
@@ -49,7 +49,7 @@ func ValidateP2PKH(address Address, chain *ChainParams) bool {
 	if err != nil {
 		return false
 	}
-	return key[0] == chain.p2pkh_address_prefix
+	return key[0] == chain.P2PKH_Address_Prefix
 }
 
 func ValidateP2SH(address Address, chain *ChainParams) bool {
@@ -57,5 +57,5 @@ func ValidateP2SH(address Address, chain *ChainParams) bool {
 	if err != nil {
 		return false
 	}
-	return key[0] == chain.p2sh_address_prefix
+	return key[0] == chain.P2SH_Address_Prefix
 }

@@ -50,9 +50,14 @@ func TestBip39_JP(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		resMnemonic, resSeed, err := bip39.MnemonicFromEntropy(entropy, password, wordlist)
+		resMnemonic, err := bip39.MnemonicFromEntropy(entropy, password, wordlist)
 		if err != nil {
 			t.Errorf("MnemonicFromEntropy: %v", err)
+			continue
+		}
+		resSeed, err := bip39.SeedFromMnemonic(resMnemonic, password, wordlist)
+		if err != nil {
+			t.Errorf("SeedFromMnemonic: %v", err)
 			continue
 		}
 		if !bytes.Equal(resSeed, seed) {
