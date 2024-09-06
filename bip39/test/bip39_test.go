@@ -43,7 +43,7 @@ func TestBip39(t *testing.T) {
 			space := bip39.LangSpace[lang]
 
 			// MnemonicFromEntropy should generate the same mnemonic and seed from the entropy
-			resMnemonic, err := bip39.MnemonicFromEntropy(entropy, password, bip39.WordLists[lang])
+			resMnemonic, err := bip39.MnemonicFromEntropy(entropy, bip39.WordLists[lang])
 			if err != nil {
 				t.Errorf("MnemonicFromEntropy: %v", err)
 				continue

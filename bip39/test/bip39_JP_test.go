@@ -50,7 +50,7 @@ func TestBip39_JP(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		resMnemonic, err := bip39.MnemonicFromEntropy(entropy, password, wordlist)
+		resMnemonic, err := bip39.MnemonicFromEntropy(entropy, wordlist)
 		if err != nil {
 			t.Errorf("MnemonicFromEntropy: %v", err)
 			continue

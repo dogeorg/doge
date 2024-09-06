@@ -63,15 +63,12 @@ var ErrWrongLength = errors.New("wrong mnemonic length: must be 12, 15, 18, 21 o
 // The number of entropy bits must be between 128 and 256 inclusive, and divisible
 // by 32 as per BIP-39.
 //
-// The passphrase is an optional string used to protect the seed derived from
-// the mnemonic phrase (via PBKDF2)
-//
-// Returns the generated mnemonic phrase and the generated seed.
+// Returns the generated mnemonic phrase.
 //
 // Can return the following errors:
 // ErrBadEntropy (entropy length is incorrect; expects 128,160,192,224,256)
 // ErrOutOfEntropy (the OS entropy source is exhausted)
-func GenerateRandomMnemonic(entropy int, passphrase string, wordlist []string) (mnemonic []string, err error) {
+func GenerateRandomMnemonic(entropy int, wordlist []string) (mnemonic []string, err error) {
 	if entropy < 128 || entropy > 256 || entropy%32 != 0 {
 		return nil, ErrBadEntropy
 	}
@@ -80,7 +77,7 @@ func GenerateRandomMnemonic(entropy int, passphrase string, wordlist []string) (
 	if err != nil {
 		return nil, wrapOutOfEntropy(err)
 	}
-	return MnemonicFromEntropy(entBytes, passphrase, wordlist)
+	return MnemonicFromEntropy(entBytes, wordlist)
 }
 
 // MnemonicFromEntropy converts 128-256 bits of entropy to a 12-24 word mnemonic phrase.
@@ -90,14 +87,11 @@ func GenerateRandomMnemonic(entropy int, passphrase string, wordlist []string) (
 // The number of entropy bits must be between 128 and 256 inclusive, and divisible
 // by 32 as per BIP-39.
 //
-// The passphrase is an optional string used to protect the seed derived from
-// the mnemonic phrase (via PBKDF2)
-//
-// Returns the encoded mnemonic phrase and the generated seed.
+// Returns the encoded mnemonic phrase.
 //
 // Can return the following errors:
 // ErrBadEntropy (entropy length is incorrect; expects 16,20,24,28,32 bytes)
-func MnemonicFromEntropy(entropy []byte, passphrase string, wordlist []string) (mnemonic []string, err error) {
+func MnemonicFromEntropy(entropy []byte, wordlist []string) (mnemonic []string, err error) {
 	// The mnemonic must encode entropy [ENT] in a multiple of 32 ENT.
 	// The allowed size of ENT is 128-256 ENT.
 	ENT := len(entropy) * 8
@@ -149,6 +143,9 @@ func MnemonicFromEntropy(entropy []byte, passphrase string, wordlist []string) (
 //
 // This function verifies the 12-24 words are on the wordlist, and verifies the
 // checksum bits included in the mnemonic phrase.
+//
+// The passphrase is an optional string used to protect the seed derived from
+// the mnemonic phrase (via PBKDF2)
 //
 // Can return the following errors:
 // ErrWrongLength (wrong number of words; expects 12,15,18,21,24)
