@@ -36,12 +36,6 @@ func P2PKHFromECPrivKeyWIF(ec_priv_key_wif string) (p2pkh Address, err error) {
 		return "", err
 	}
 	ec_pub_compressed := ECPubKeyFromECPrivKey(ec_pk)
-	clear(ec_pk) // clear key for security.
+	memZero(ec_pk) // clear key for security.
 	return PubKeyToP2PKH(ec_pub_compressed, chain)
-}
-
-func memZero(to []byte) {
-	for i := range to {
-		to[i] = 0
-	}
 }

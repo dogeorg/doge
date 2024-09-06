@@ -11,7 +11,7 @@ func EncodeECPrivKeyWIF(key ECPrivKey, chain *ChainParams) string {
 	}
 	data[33] = 0x01 // pubkey will be compressed.
 	ret := Base58EncodeCheck(data[0:34])
-	clear(data[:]) // clear key for security.
+	memZero(data[:]) // clear key for security.
 	return ret
 }
 
@@ -23,7 +23,7 @@ func EncodeECPrivKeyUncompressedWIF(key ECPrivKey, chain *ChainParams) string {
 	}
 	// pubkey will be uncompressed (no 0x01 byte)
 	ret := Base58EncodeCheck(data[0:33])
-	clear(data[:]) // clear key for security.
+	memZero(data[:]) // clear key for security.
 	return ret
 }
 
@@ -48,6 +48,6 @@ func DecodeECPrivKeyWIF(str string, chain *ChainParams) (ec_priv_key ECPrivKey, 
 		err = fmt.Errorf("DecodeECPrivKeyWIF: invalid EC key (zero or >= N)")
 		return nil, nil, err
 	}
-	clear(data[:]) // clear key for security.
+	memZero(data[:]) // clear key for security.
 	return pk[:], chain, nil
 }

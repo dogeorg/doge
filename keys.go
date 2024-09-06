@@ -25,15 +25,6 @@ type ECPrivKey = []byte            // 32 bytes.
 type ECPubKeyCompressed = []byte   // 33 bytes with 0x02 or 0x03 prefix.
 type ECPubKeyUncompressed = []byte // 65 bytes with 0x04 prefix.
 
-var zeroBytes [80]byte // 80 zero-bytes (used in other files)
-
-func clear(slice []byte) {
-	if len(slice) > 80 {
-		panic("clear: slice too big")
-	}
-	copy(slice, zeroBytes[0:len(slice)])
-}
-
 func GenerateECPrivKey() (ECPrivKey, error) {
 	// GeneratePrivateKeyFromRand ensures the returned key satisfies ECKeyIsValid.
 	// This can return an error if entropy is not available.

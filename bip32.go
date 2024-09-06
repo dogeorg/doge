@@ -384,7 +384,7 @@ func DecodeBip32WIF(extendedKey string, chain *ChainParams) (*Bip32Key, error) {
 		return nil, err
 	}
 	if len(data) != SerializedBip32KeyLength {
-		clear(data) // clear for security.
+		memZero(data) // clear for security.
 		return nil, fmt.Errorf("DecodeBip32WIF: not a bip32 extended key (wrong length)")
 	}
 	var key Bip32Key
@@ -392,7 +392,7 @@ func DecodeBip32WIF(extendedKey string, chain *ChainParams) (*Bip32Key, error) {
 	if chain == nil {
 		ok := false
 		if ok, chain = ChainFromBip32Version(version, true); !ok {
-			clear(data) // clear for security.
+			memZero(data) // clear for security.
 			return nil, fmt.Errorf("DecodeBip32WIF: not a bip32 extended key (unknown chain prefix)")
 		}
 	}
@@ -401,7 +401,7 @@ func DecodeBip32WIF(extendedKey string, chain *ChainParams) (*Bip32Key, error) {
 	} else if version == chain.Bip32_PubKey_Prefix {
 		key.keyType = keyBip32Pub
 	} else {
-		clear(data) // clear for security.
+		memZero(data) // clear for security.
 		return nil, fmt.Errorf("DecodeBip32WIF: not a bip32 extended key (wrong prefix)")
 	}
 	key.depth = data[4]
@@ -409,16 +409,16 @@ func DecodeBip32WIF(extendedKey string, chain *ChainParams) (*Bip32Key, error) {
 	key.child_number = deser32(data[9:])
 	key.chain = chain
 	if copy(key.chain_code[:], data[13:45]) != 32 {
-		clear(data) // clear for security.
+		memZero(data) // clear for security.
 		key.Clear()
 		panic("DecodeBip32WIF: wrong chain_code length")
 	}
 	if copy(key.pub_priv_key[:], data[45:78]) != 33 {
-		clear(data) // clear for security.
+		memZero(data) // clear for security.
 		key.Clear()
 		panic("DecodeBip32WIF: wrong key length")
 	}
-	clear(data) // clear key for security.
+	memZero(data) // clear key for security.
 	key_pre := key.pub_priv_key[0]
 	if !(key_pre == 0x00 && key.keyType == keyBip32Priv) && !((key_pre == 0x02 || key_pre == 0x03) && key.keyType == keyBip32Pub) {
 		key.Clear()
@@ -447,7 +447,9 @@ func EncodeBip32WIF(key *Bip32Key) (string, error) {
 	if copy(data[45:78], key.pub_priv_key[:]) != 33 {
 		panic("EncodeBip32WIF: wrong key length")
 	}
-	return Base58EncodeCheck(data[:]), nil
+	wif := Base58EncodeCheck(data[:])
+	memZero(data[:])
+	return wif, nil
 }
 
 // HMAC-SHA512 returns 64 bytes.
