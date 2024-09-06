@@ -79,48 +79,44 @@ func TestDecodeBip32(t *testing.T) {
 		if len(fix.Path) > 0 {
 			child_no = fix.Path[len(fix.Path)-1]
 		}
+		key_depth := byte(len(fix.Path))
 
 		// decode private key
 		priv, err := DecodeBip32WIF(fix.XPrv, nil)
 		if err != nil {
 			t.Error(err)
-		}
-		// check depth and child_number.
-		key_depth := byte(len(fix.Path))
-		if priv.depth != key_depth {
-			t.Errorf("Bip32WIF: XPrv has wrong key depth: %v vs %v for %v", priv.depth, key_depth, fix.Path)
-		}
-		if priv.child_number != child_no {
-			t.Errorf("Bip32WIF: XPrv has wrong child_number: %v vs %v for %v", priv.child_number, child_no, fix.Path)
-		}
-		// check round-trip.
-		priv_wif, err := EncodeBip32WIF(priv)
-		if err != nil {
-			t.Errorf("EncodeBip32WIF: %v", err)
-		}
-		if priv_wif != fix.XPrv {
-			t.Errorf("Bip32WIF: XPrv did not round-trip: %v vs %v for %v", priv_wif, fix.XPrv, fix.Path)
+		} else {
+			// check depth and child_number.
+			if priv.depth != key_depth {
+				t.Errorf("Bip32WIF: XPrv has wrong key depth: %v vs %v for %v", priv.depth, key_depth, fix.Path)
+			}
+			if priv.child_number != child_no {
+				t.Errorf("Bip32WIF: XPrv has wrong child_number: %v vs %v for %v", priv.child_number, child_no, fix.Path)
+			}
+			// check round-trip.
+			priv_wif := priv.EncodeWIF()
+			if priv_wif != fix.XPrv {
+				t.Errorf("Bip32WIF: XPrv did not round-trip: %v vs %v for %v", priv_wif, fix.XPrv, fix.Path)
+			}
 		}
 
 		// decode public key
 		pub, err := DecodeBip32WIF(fix.XPub, nil)
 		if err != nil {
 			t.Error(err)
-		}
-		// check depth and child_number.
-		if pub.depth != key_depth {
-			t.Errorf("Bip32WIF: XPub has wrong key depth: %v vs %v for %v", pub.depth, key_depth, fix.Path)
-		}
-		if pub.child_number != child_no {
-			t.Errorf("Bip32WIF: XPub has wrong child_number: %v vs %v for %v", pub.child_number, child_no, fix.Path)
-		}
-		// check round-trip.
-		pub_wif, err := EncodeBip32WIF(pub)
-		if err != nil {
-			t.Errorf("EncodeBip32WIF: %v", err)
-		}
-		if priv_wif != fix.XPrv {
-			t.Errorf("Bip32WIF: XPub did not round-trip: %v vs %v for %v", pub_wif, fix.XPub, fix.Path)
+		} else {
+			// check depth and child_number.
+			if pub.depth != key_depth {
+				t.Errorf("Bip32WIF: XPub has wrong key depth: %v vs %v for %v", pub.depth, key_depth, fix.Path)
+			}
+			if pub.child_number != child_no {
+				t.Errorf("Bip32WIF: XPub has wrong child_number: %v vs %v for %v", pub.child_number, child_no, fix.Path)
+			}
+			// check round-trip.
+			pub_wif := pub.EncodeWIF()
+			if pub_wif != fix.XPub {
+				t.Errorf("Bip32WIF: XPub did not round-trip: %v vs %v for %v", pub_wif, fix.XPub, fix.Path)
+			}
 		}
 	}
 }
@@ -133,10 +129,8 @@ func TestBip32DerivePrivate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Bip32MasterFromSeed: %v", err)
 	} else {
-		m1wif, err := EncodeBip32WIF(master)
-		if err != nil {
-			t.Error(err)
-		} else if m1wif != bip32fixtures[0].XPrv {
+		m1wif := master.EncodeWIF()
+		if m1wif != bip32fixtures[0].XPrv {
 			t.Errorf("Bip32MasterFromSeed: wrong xprv: %v vs %v", m1wif, bip32fixtures[0].XPrv)
 		}
 	}
@@ -145,21 +139,18 @@ func TestBip32DerivePrivate(t *testing.T) {
 		child, err := master.DeriveChild(fix.Path)
 		if err != nil {
 			t.Errorf("DeriveChild: %v", err)
+			continue
 		}
 
 		// check XPrv.
-		privWIF, err := EncodeBip32WIF(child)
-		if err != nil {
-			t.Errorf("EncodeBip32WIF: xprv: %v", err)
-		} else if privWIF != fix.XPrv {
+		privWIF := child.EncodeWIF()
+		if privWIF != fix.XPrv {
 			t.Errorf("DeriveChild: wrong xprv: %v vs %v for %v", privWIF, fix.XPrv, fix.Path)
 		}
 
 		// check XPub.
-		pubWIF, err := EncodeBip32WIF(child.Public())
-		if err != nil {
-			t.Errorf("EncodeBip32WIF: xpub: %v", err)
-		} else if pubWIF != fix.XPub {
+		pubWIF := child.Public().EncodeWIF()
+		if pubWIF != fix.XPub {
 			t.Errorf("DeriveChild: wrong xpub: %v vs %v for %v", pubWIF, fix.XPub, fix.Path)
 		}
 
@@ -195,33 +186,30 @@ func TestBip32DerivePublic(t *testing.T) {
 	if err != nil {
 		t.Errorf("Bip32MasterFromSeed: %v", err)
 	} else {
-		m1wif, err := EncodeBip32WIF(master)
-		if err != nil {
-			t.Error(err)
-		} else if m1wif != bip32fixtures[0].XPrv {
+		m1wif := master.EncodeWIF()
+		if m1wif != bip32fixtures[0].XPrv {
 			t.Errorf("Bip32MasterFromSeed: wrong xprv: %v vs %v", m1wif, bip32fixtures[0].XPrv)
 		}
 	}
 
 	for _, fix := range bip32fixtures {
-		// only test non-hardened final key derivations
+		// only test non-hardened final key derivations (cannot publically derive from hardened keys)
 		last := len(fix.Path) - 1
 		if len(fix.Path) > 0 && fix.Path[last] < HardenedKey {
-			// first, derive up to the 2nd last key using private ckd
+			// first, derive up to the 2nd-last key using private ckd
 			prior, err := master.DeriveChild(fix.Path[:last])
 			if err != nil {
 				t.Errorf("DeriveChild: %v", err)
 			}
+			// derive the final key using public derivation
 			child, err := prior.Public().PublicCKD(fix.Path[last])
 			if err != nil {
 				t.Errorf("DeriveChild: %v", err)
 			}
 
 			// check XPub.
-			pubWIF, err := EncodeBip32WIF(child)
-			if err != nil {
-				t.Errorf("EncodeBip32WIF: xpub: %v", err)
-			} else if pubWIF != fix.XPub {
+			pubWIF := child.EncodeWIF()
+			if pubWIF != fix.XPub {
 				t.Errorf("DeriveChild: wrong xpub: %v vs %v for %v", pubWIF, fix.XPub, fix.Path)
 			}
 

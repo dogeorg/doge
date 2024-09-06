@@ -45,6 +45,11 @@ func (key *Bip32Key) ChainParams() *ChainParams {
 	return key.chain
 }
 
+// EncodeWIF encodes this key in Bip32 WIF format (dgpv,dgub)
+func (key *Bip32Key) EncodeWIF() string {
+	return EncodeBip32WIF(key)
+}
+
 // Public returns the Public Bip32Key corresponding to a Private Bip32Key.
 // If key is already a Public Bip32Key, the same *Bip32Key is returned.
 func (key *Bip32Key) Public() *Bip32Key {
@@ -377,6 +382,7 @@ func Bip32MasterFromSeed(seed []byte, chain *ChainParams) (*Bip32Key, error) {
 	return &key, nil
 }
 
+// DecodeBip32WIF decodes a WIF-encoded Bip32Key (dgpv,dgub)
 // chain is optional, will auto-detect if nil.
 func DecodeBip32WIF(extendedKey string, chain *ChainParams) (*Bip32Key, error) {
 	data, err := Base58DecodeCheck(extendedKey)
@@ -427,7 +433,8 @@ func DecodeBip32WIF(extendedKey string, chain *ChainParams) (*Bip32Key, error) {
 	return &key, nil
 }
 
-func EncodeBip32WIF(key *Bip32Key) (string, error) {
+// EncodeBip32WIF encodes a Bip32Key in WIF format (dgpv,dgub)
+func EncodeBip32WIF(key *Bip32Key) string {
 	data := [SerializedBip32KeyLength]byte{}
 	var version uint32
 	if key.keyType == keyBip32Priv {
@@ -449,7 +456,7 @@ func EncodeBip32WIF(key *Bip32Key) (string, error) {
 	}
 	wif := Base58EncodeCheck(data[:])
 	memZero(data[:])
-	return wif, nil
+	return wif
 }
 
 // HMAC-SHA512 returns 64 bytes.
