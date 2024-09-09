@@ -22,7 +22,7 @@ func TestWIF(t *testing.T) {
 }
 
 func wifCT(t *testing.T, pkey string, wif string) {
-	pkey_c := hx2b(pkey)
+	pkey_c := (*[32]byte)(hx2b(pkey))
 	wif_c := EncodeECPrivKeyWIF(pkey_c, &BitcoinMainChain)
 	if wif_c != wif {
 		t.Fatalf("EncodeECPrivKeyWIF: wrong result: %s vs %s", wif_c, wif)
@@ -34,13 +34,13 @@ func wifCT(t *testing.T, pkey string, wif string) {
 	if chain_c != &BitcoinMainChain {
 		t.Fatalf("DecodeECPrivKeyWIF: wrong chain")
 	}
-	if !bytes.Equal(key_c, pkey_c) {
+	if !bytes.Equal(key_c[:], pkey_c[:]) {
 		t.Fatalf("DecodeECPrivKeyWIF: decoded bytes differ: %v vs %v", key_c, pkey)
 	}
 }
 
 func wifUT(t *testing.T, pkey string, wif string) {
-	pkey_u := hx2b(pkey)
+	pkey_u := (*[32]byte)(hx2b(pkey))
 	wif_u := EncodeECPrivKeyUncompressedWIF(pkey_u, &BitcoinMainChain)
 	if wif_u != wif {
 		t.Fatalf("EncodeECPrivKeyUncompressedWIF: wrong result: %s vs %s", wif_u, wif)
@@ -52,7 +52,7 @@ func wifUT(t *testing.T, pkey string, wif string) {
 	if chain_u != &BitcoinMainChain {
 		t.Fatalf("DecodeECPrivKeyWIF: wrong chain")
 	}
-	if !bytes.Equal(key_u, pkey_u) {
+	if !bytes.Equal(key_u[:], pkey_u[:]) {
 		t.Fatalf("DecodeECPrivKeyWIF: decoded bytes differ: %v vs %v", key_u, pkey)
 	}
 }

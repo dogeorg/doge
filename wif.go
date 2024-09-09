@@ -6,7 +6,7 @@ func EncodeECPrivKeyWIF(key ECPrivKey, chain *ChainParams) string {
 	// https://en.bitcoin.it/wiki/Wallet_import_format
 	data := [2 + 32 + 4]byte{}
 	data[0] = chain.PKey_Prefix
-	if copy(data[1:], key) != ECPrivKeyLen {
+	if copy(data[1:], key[:]) != ECPrivKeyLen {
 		panic("EncodeECPrivKeyWIF: wrong key length")
 	}
 	data[33] = 0x01 // pubkey will be compressed.
@@ -18,7 +18,7 @@ func EncodeECPrivKeyWIF(key ECPrivKey, chain *ChainParams) string {
 func EncodeECPrivKeyUncompressedWIF(key ECPrivKey, chain *ChainParams) string {
 	data := [1 + 32 + 4]byte{}
 	data[0] = chain.PKey_Prefix
-	if copy(data[1:], key) != ECPrivKeyLen {
+	if copy(data[1:], key[:]) != ECPrivKeyLen {
 		panic("EncodeECPrivKeyUncompressedWIF: wrong key length")
 	}
 	// pubkey will be uncompressed (no 0x01 byte)
@@ -44,10 +44,10 @@ func DecodeECPrivKeyWIF(str string, chain *ChainParams) (ec_priv_key ECPrivKey, 
 	if copy(pk[:], data[1:33]) != ECPrivKeyLen {
 		panic("DecodeECPrivKeyWIF: wrong copy length")
 	}
-	if !ECKeyIsValid(pk[:]) {
+	if !ECKeyIsValid(&pk) {
 		err = fmt.Errorf("DecodeECPrivKeyWIF: invalid EC key (zero or >= N)")
 		return nil, nil, err
 	}
 	memZero(data[:]) // clear key for security.
-	return pk[:], chain, nil
+	return &pk, chain, nil
 }

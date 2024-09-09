@@ -21,9 +21,9 @@ const (
 	ECPubKeyUncompressedLen = 65 // bytes: [x04][32-X][32-Y]
 )
 
-type ECPrivKey = []byte            // 32 bytes.
-type ECPubKeyCompressed = []byte   // 33 bytes with 0x02 or 0x03 prefix.
-type ECPubKeyUncompressed = []byte // 65 bytes with 0x04 prefix.
+type ECPrivKey = *[32]byte            // 32 bytes.
+type ECPubKeyCompressed = *[33]byte   // 33 bytes with 0x02 or 0x03 prefix.
+type ECPubKeyUncompressed = *[65]byte // 65 bytes with 0x04 prefix.
 
 func GenerateECPrivKey() (ECPrivKey, error) {
 	// GeneratePrivateKeyFromRand ensures the returned key satisfies ECKeyIsValid.
@@ -32,33 +32,34 @@ func GenerateECPrivKey() (ECPrivKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := pk.Serialize()
-	pk.Zero() // clear key for security.
+	ret := (*[32]byte)(pk.Serialize()) // returns 32 bytes; Go 1.17 cast to underlying array
+	pk.Zero()                          // clear key material.
 	return ret, nil
 }
 
 func ECPubKeyFromECPrivKey(pk ECPrivKey) ECPubKeyCompressed {
-	key := secp256k1.PrivKeyFromBytes(pk)
-	K := key.PubKey()
+	var privKey secp256k1.PrivateKey
+	overflow := privKey.Key.SetBytes(pk)
+	if (overflow | privKey.Key.IsZeroBit()) != 0 {
+		panic("ECPubKeyFromECPrivKey: invalid private key")
+	}
+	K := privKey.PubKey()
+	privKey.Zero() // clear key material.
 	if !K.IsOnCurve() {
 		panic("ECPubKeyFromECPrivKey: public key is not on the curve!")
 	}
-	pub := K.SerializeCompressed()
-	key.Zero() // clear key for security.
+	pub := (*[33]byte)(K.SerializeCompressed()) // returns 33 bytes
 	return pub
 }
 
 func ECKeyIsValid(pk ECPrivKey) bool {
-	if len(pk) != ECPrivKeyLen {
-		return false
-	}
 	// If overflow != 0, it means the ECPrivKey is >= N (the order
 	// of the secp256k1 curve) which is not a valid private key.
 	var modN secp256k1.ModNScalar
-	overflow := modN.SetBytes((*[32]byte)(pk)) // Go 1.17 cast to underlying array
+	overflow := modN.SetBytes(pk)
 	// "Further, 0 is not a valid private key. It is up to the caller
 	// to provide a value in the appropriate range of [1, N-1]."
 	overflow |= modN.IsZeroBit()
-	modN.Zero() // clear key for security.
+	modN.Zero() // clear key material.
 	return overflow == 0
 }

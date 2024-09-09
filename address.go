@@ -17,6 +17,7 @@ func Hash160toAddress(hash []byte, prefix byte) Address {
 	return Address(Base58EncodeCheck(ver_hash[0:21]))
 }
 
+// PubKeyToP2PKH converst an ECPubKeyCompressed or ECPubKeyUncompressed to a Dogecoin P2PKH Address.
 func PubKeyToP2PKH(key []byte, chain *ChainParams) (Address, error) {
 	if !((len(key) == ECPubKeyUncompressedLen && key[0] == 0x04) ||
 		(len(key) == ECPubKeyCompressedLen && (key[0] == 0x02 || key[0] == 0x03))) {

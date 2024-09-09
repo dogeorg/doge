@@ -26,7 +26,7 @@ func ECPrivKeyFromBip32WIF(ext_key_wif string, chain *ChainParams) (ec_privkey_w
 		return "", fmt.Errorf("ECPrivKeyFromBip32WIF: invalid EC key (zero or >= N)")
 	}
 	ret, err := EncodeECPrivKeyWIF(priv, chain), nil
-	memZero(priv)
+	memZero(priv[:]) // clear key material.
 	return ret, err
 }
 
@@ -36,6 +36,6 @@ func P2PKHFromECPrivKeyWIF(ec_priv_key_wif string) (p2pkh Address, err error) {
 		return "", err
 	}
 	ec_pub_compressed := ECPubKeyFromECPrivKey(ec_pk)
-	memZero(ec_pk) // clear key for security.
-	return PubKeyToP2PKH(ec_pub_compressed, chain)
+	memZero(ec_pk[:]) // clear key material.
+	return PubKeyToP2PKH(ec_pub_compressed[:], chain)
 }

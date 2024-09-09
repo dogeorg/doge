@@ -28,7 +28,7 @@ type Bip32Key struct {
 	depth              byte         // 0x00 for master nodes, 0x01 for level-1 derived keys, ...
 	child_number       uint32       // child number. ser32(i) for i in xi = xpar/i, with xi the key being serialized. (0x00000000 if master key)
 	chain              *ChainParams // chain params derived from Bip32 'version' field
-	parent_pub         []byte       // parent public key (used to generate ParentFingerprint on demand)
+	parent_pub         *[33]byte    // parent public key (used to generate ParentFingerprint on demand)
 	parent_fingerprint uint32       // the fingerprint of the parent's key (0x00000000 if master key)
 	chain_code         [32]byte     // the chain code
 	pub_priv_key       [33]byte     // public key or private key data (serP(K) for public keys, 0x00 || ser256(k) for private keys)
@@ -68,7 +68,7 @@ func (key *Bip32Key) Public() *Bip32Key {
 		// N((k, c)) → (K, c) computes the extended public key corresponding to an extended private key
 		// (the "neutered" version, as it removes the ability to sign transactions).
 		// The returned key K is point(k).
-		serPK := ECPubKeyFromECPrivKey(key.pub_priv_key[1:33]) // serP(point(k))
+		serPK := ECPubKeyFromECPrivKey((*[32]byte)(key.pub_priv_key[1:33])) // serP(point(k))
 		copy(pub.pub_priv_key[0:33], serPK[0:33])
 		return &pub
 	} else {
@@ -89,7 +89,7 @@ func (key *Bip32Key) ParentFingerprint() uint32 {
 	} else {
 		// "Extended keys can be identified by the Hash160 of the
 		//  serialized ECDSA public key K, ignoring the chain code."
-		hash := Hash160(key.parent_pub)
+		hash := Hash160(key.parent_pub[:])
 		key.parent_fingerprint = binary.BigEndian.Uint32(hash[0:4])
 		key.parent_pub = nil // only calculate once
 		return key.parent_fingerprint
@@ -100,39 +100,38 @@ func (key *Bip32Key) ParentFingerprint() uint32 {
 // NOTE: this is not the ParentFingerprint() sored in Bip23 WIF format!
 // This is primarily included for tests.
 func (key *Bip32Key) ThisKeyFingerprint() uint32 {
-	var pubkey []byte
+	var pubkey ECPubKeyCompressed
 	if key.keyType == keyBip32Priv {
-		pubkey = ECPubKeyFromECPrivKey(key.pub_priv_key[1:33]) // serP(point(k))
+		pk := (*[32]byte)(key.pub_priv_key[1:33]) // Go 1.17 cast to underlying array
+		pubkey = ECPubKeyFromECPrivKey(pk)        // serP(point(k))
 	} else {
-		pubkey = key.pub_priv_key[:]
+		pubkey = &key.pub_priv_key
 	}
-	hash := Hash160(pubkey)
+	hash := Hash160(pubkey[:])
 	return binary.BigEndian.Uint32(hash[0:4])
 }
 
-func (key *Bip32Key) GetECPrivKey() ([]byte, error) {
+// GetECPrivKey gets a copy of the underlying private key.
+func (key *Bip32Key) GetECPrivKey() (ECPrivKey, error) {
 	if key.keyType == keyBip32Priv {
 		pk := [ECPrivKeyLen]byte{}
-		if copy(pk[:], key.pub_priv_key[1:33]) != ECPrivKeyLen {
-			panic("GetECPrivKey: wrong length")
-		}
-		return pk[:], nil
+		pk = *(*[32]byte)(key.pub_priv_key[1:33]) // copy
+		return &pk, nil
 	} else {
 		return nil, fmt.Errorf("Bip32Key is not a private key")
 	}
 }
 
-func (key *Bip32Key) GetECPubKey() []byte {
+// GetECPrivKey gets a copy of the underlying public key.
+func (key *Bip32Key) GetECPubKey() ECPubKeyCompressed {
 	if key.keyType == keyBip32Priv {
 		// contains a private key.
-		return ECPubKeyFromECPrivKey(key.pub_priv_key[1:33])
+		return ECPubKeyFromECPrivKey((*[32]byte)(key.pub_priv_key[1:33])) // Go 1.17 cast to underlying array
 	} else {
 		// contains a public key.
 		pub := [ECPubKeyCompressedLen]byte{}
-		if copy(pub[:], key.pub_priv_key[:]) != ECPubKeyCompressedLen {
-			panic("GetECPubKey: wrong length")
-		}
-		return pub[:]
+		pub = key.pub_priv_key // copy
+		return &pub
 	}
 }
 
@@ -206,7 +205,7 @@ func (key *Bip32Key) ckd_private_derivation(path []uint32) (*Bip32Key, error) {
 	copy(chaincode_buf[:], key.chain_code[:])
 	for it, index := range path {
 		hash := hmac.New(sha512.New, chaincode_buf[:])
-		var parent_pub []byte
+		var parent_pub *[33]byte
 		if index&HardenedKey != 0 {
 			// Private derivation.
 			// "let I = HMAC-SHA512(Key = cpar, Data = 0x00 || ser256(kpar) || ser32(i))
@@ -216,8 +215,8 @@ func (key *Bip32Key) ckd_private_derivation(path []uint32) (*Bip32Key, error) {
 			// Public derivation.
 			// "let I = HMAC-SHA512(Key = cpar, Data = serP(point(kpar)) || ser32(i))"
 			// Note: save the parent pubkey in case this is the last iteration.
-			parent_pub = ECPubKeyFromECPrivKey(privkey_buf[1:33]) // serP(K = point(k))
-			hash.Write(parent_pub[0:33])                          // serP(point(kpar))
+			parent_pub = ECPubKeyFromECPrivKey((*[32]byte)(privkey_buf[1:33])) // serP(K = point(k))
+			hash.Write(parent_pub[:])                                          // serP(point(kpar))
 		}
 		ser32(s32[:], index)
 		hash.Write(s32[:])
@@ -229,22 +228,23 @@ func (key *Bip32Key) ckd_private_derivation(path []uint32) (*Bip32Key, error) {
 		overflow := parseILModN.SetBytes((*[32]byte)(I[0:32])) // overflow if >= N
 		// "In case parse256(IL) ≥ n or ki = 0, the resulting key is invalid,
 		// and one should proceed with the next value for i.
-		// (Note: this has probability lower than 1 in 2127.)"
+		// (Note: this has probability lower than 1 in 2^127)"
 		if overflow != 0 {
+			// In case parse256(IL) ≥ n … the resulting key is invalid"
 			err = ErrNextIndex
 			break // clear all sensitive state and return err
 		}
 		kparModN.SetBytes((*[32]byte)(privkey_buf[1:33])) // kpar (parent private key)
 		parseILModN.Add(&kparModN)                        // parse256(IL) + kpar (mod n)
-		// "In case … ki = 0, the resulting key is invalid,"
 		if parseILModN.IsZero() {
+			// "In case … ki = 0, the resulting key is invalid"
 			err = ErrNextIndex
 			break // clear all sensitive state and return err
 		}
 		if it < last {
 			parseILModN.PutBytesUnchecked(privkey_buf[1:33])
 			copy(chaincode_buf[:], I[32:64])
-			if !ECKeyIsValid(privkey_buf[1:33]) {
+			if !ECKeyIsValid((*[32]byte)(privkey_buf[1:33])) {
 				// should be unreachable (already checked overflow and ki=0)
 				panic("PrivateCKD: generated invalid private key")
 			}
@@ -253,7 +253,7 @@ func (key *Bip32Key) ckd_private_derivation(path []uint32) (*Bip32Key, error) {
 			// the child Bip32Key to return.
 			parseILModN.PutBytesUnchecked(child.pub_priv_key[1:33])
 			copy(child.chain_code[:], I[32:64])
-			if !ECKeyIsValid(child.pub_priv_key[1:33]) {
+			if !ECKeyIsValid((*[32]byte)(child.pub_priv_key[1:33])) {
 				// should be unreachable (already checked overflow and ki=0)
 				panic("PrivateCKD: generated invalid private key")
 			}
@@ -263,7 +263,7 @@ func (key *Bip32Key) ckd_private_derivation(path []uint32) (*Bip32Key, error) {
 				child.parent_pub = parent_pub // from "Public derivation" above
 			} else {
 				// note: privkey_buf still contains the parent private key.
-				child.parent_pub = ECPubKeyFromECPrivKey(privkey_buf[1:33]) // serP(K = point(k))
+				child.parent_pub = ECPubKeyFromECPrivKey((*[32]byte)(privkey_buf[1:33])) // serP(K = point(k))
 			}
 			break
 		}
@@ -331,12 +331,13 @@ func (key *Bip32Key) PublicCKD(index uint32) (*Bip32Key, error) {
 			return &Bip32Key{}, ErrNextIndex
 		}
 		// Return Bip32Key for the child.
+		var parent_pub [33]byte = key.pub_priv_key // copy
 		child := Bip32Key{
 			keyType:      keyBip32Pub,
 			depth:        key.depth + 1,
 			child_number: index,
 			chain:        key.chain,
-			parent_pub:   key.pub_priv_key[:],
+			parent_pub:   &parent_pub,
 		}
 		childPubKey := Ki.SerializeCompressed() // 33 bytes
 		copy(child.pub_priv_key[0:33], childPubKey[0:33])
@@ -365,7 +366,7 @@ func Bip32MasterFromSeed(seed []byte, chain *ChainParams) (*Bip32Key, error) {
 	masterKey := I[0:32]
 	chainCode := I[32:64]
 	// In case parse256(IL) is 0 or parse256(IL) ≥ n, the master key is invalid.
-	if !ECKeyIsValid(masterKey) {
+	if !ECKeyIsValid((*[32]byte)(masterKey)) {
 		memZero(I)
 		return &Bip32Key{}, ErrAnotherSeed
 	}
