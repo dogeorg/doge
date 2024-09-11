@@ -1,6 +1,7 @@
 package doge
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -132,7 +133,98 @@ var testVector2 = bip32tv{
 	},
 }
 
-var testVectors = []bip32tv{testVector1, testVector2}
+// https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#test-vector-3
+var testVector3 = bip32tv{
+	Seed: "4b381541583be4423346c643850da4b320e46a87ae3d2a4e6da11eba819cd4acba45d239319ac14f863b8d5ab5a0d0c64d2e8a1e7d1457df2e5a3c51c73235be",
+	Tests: []bip32fix{
+		{
+			"xpub661MyMwAqRbcEZVB4dScxMAdx6d4nFc9nvyvH3v4gJL378CSRZiYmhRoP7mBy6gSPSCYk6SzXPTf3ND1cZAceL7SfJ1Z3GC8vBgp2epUt13",
+			"xprv9s21ZrQH143K25QhxbucbDDuQ4naNntJRi4KUfWT7xo4EKsHt2QJDu7KXp1A3u7Bi1j8ph3EGsZ9Xvz9dGuVrtHHs7pXeTzjuxBrCmmhgC6",
+			"",
+			"",
+			0,          // (fpr)
+			[]uint32{}, // [m]
+		},
+		{
+			"xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y",
+			"xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L",
+			"",
+			"",
+			0,               // (fpr)
+			[]uint32{0 + H}, // [m/0']
+		},
+	},
+}
+
+// https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#test-vector-4
+var testVector4 = bip32tv{
+	Seed: "3ddd5602285899a946114506157c7997e5444528f3003f6134712147db19b678",
+	Tests: []bip32fix{
+		{
+			"xpub661MyMwAqRbcGczjuMoRm6dXaLDEhW1u34gKenbeYqAix21mdUKJyuyu5F1rzYGVxyL6tmgBUAEPrEz92mBXjByMRiJdba9wpnN37RLLAXa",
+			"xprv9s21ZrQH143K48vGoLGRPxgo2JNkJ3J3fqkirQC2zVdk5Dgd5w14S7fRDyHH4dWNHUgkvsvNDCkvAwcSHNAQwhwgNMgZhLtQC63zxwhQmRv",
+			"",
+			"",
+			0,          // (fpr)
+			[]uint32{}, // [m]
+		},
+		{
+			"xpub69AUMk3qDBi3uW1sXgjCmVjJ2G6WQoYSnNHyzkmdCHEhSZ4tBok37xfFEqHd2AddP56Tqp4o56AePAgCjYdvpW2PU2jbUPFKsav5ut6Ch1m",
+			"xprv9vB7xEWwNp9kh1wQRfCCQMnZUEG21LpbR9NPCNN1dwhiZkjjeGRnaALmPXCX7SgjFTiCTT6bXes17boXtjq3xLpcDjzEuGLQBM5ohqkao9G",
+			"",
+			"",
+			0,               // (fpr)
+			[]uint32{0 + H}, // [m/0']
+		},
+		{
+			"xpub6BJA1jSqiukeaesWfxe6sNK9CCGaujFFSJLomWHprUL9DePQ4JDkM5d88n49sMGJxrhpjazuXYWdMf17C9T5XnxkopaeS7jGk1GyyVziaMt",
+			"xprv9xJocDuwtYCMNAo3Zw76WENQeAS6WGXQ55RCy7tDJ8oALr4FWkuVoHJeHVAcAqiZLE7Je3vZJHxspZdFHfnBEjHqU5hG1Jaj32dVoS6XLT1",
+			"",
+			"",
+			0,                      // (fpr)
+			[]uint32{0 + H, 1 + H}, // [m/0'/1']
+		},
+	},
+}
+
+// failing test cases
+// https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#test-vector-5
+var testVector5 = [][]string{
+	{
+		"xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6LBpB85b3D2yc8sfvZU521AAwdZafEz7mnzBBsz4wKY5fTtTQBm", // (pubkey version / prvkey mismatch)
+		"xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGTQQD3dC4H2D5GBj7vWvSQaaBv5cxi9gafk7NF3pnBju6dwKvH", // (prvkey version / pubkey mismatch)
+	},
+	{
+		"xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Txnt3siSujt9RCVYsx4qHZGc62TG4McvMGcAUjeuwZdduYEvFn", // (invalid pubkey prefix 04)
+		"xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGpWnsj83BHtEy5Zt8CcDr1UiRXuWCmTQLxEK9vbz5gPstX92JQ", // (invalid prvkey prefix 04)
+	},
+	{
+		"xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6N8ZMMXctdiCjxTNq964yKkwrkBJJwpzZS4HS2fxvyYUA4q2Xe4", // (invalid pubkey prefix 01)
+		"xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD9y5gkZ6Eq3Rjuahrv17fEQ3Qen6J", // (invalid prvkey prefix 01)
+	},
+	{
+		"xprv9s2SPatNQ9Vc6GTbVMFPFo7jsaZySyzk7L8n2uqKXJen3KUmvQNTuLh3fhZMBoG3G4ZW1N2kZuHEPY53qmbZzCHshoQnNf4GvELZfqTUrcv", // (zero depth with non-zero parent fingerprint)
+		"xpub661no6RGEX3uJkY4bNnPcw4URcQTrSibUZ4NqJEw5eBkv7ovTwgiT91XX27VbEXGENhYRCf7hyEbWrR3FewATdCEebj6znwMfQkhRYHRLpJ", // (zero depth with non-zero parent fingerprint)
+	},
+	{
+		"xprv9s21ZrQH4r4TsiLvyLXqM9P7k1K3EYhA1kkD6xuquB5i39AU8KF42acDyL3qsDbU9NmZn6MsGSUYZEsuoePmjzsB3eFKSUEh3Gu1N3cqVUN", // (zero depth with non-zero index)
+		"xpub661MyMwAuDcm6CRQ5N4qiHKrJ39Xe1R1NyfouMKTTWcguwVcfrZJaNvhpebzGerh7gucBvzEQWRugZDuDXjNDRmXzSZe4c7mnTK97pTvGS8", // (zero depth with non-zero index)
+	},
+	{
+		"DMwo58pR1QLEFihHiXPVykYB6fJmsTeHvyTp7hRThAtCX8CvYzgPcn8XnmdfHGMQzT7ayAmfo4z3gY5KfbrZWZ6St24UVf2Qgo6oujFktLHdHY4", // (unknown extended key version)
+		"DMwo58pR1QLEFihHiXPVykYB6fJmsTeHvyTp7hRThAtCX8CvYzgPcn8XnmdfHPmHJiEDXkTiJTVV9rHEBUem2mwVbbNfvT2MTcAqj3nesx8uBf9", // (unknown extended key version)
+	},
+	{
+		"xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzF93Y5wvzdUayhgkkFoicQZcP3y52uPPxFnfoLZB21Teqt1VvEHx", // (private key 0 not in 1..n-1)
+		"xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD5SDKr24z3aiUvKr9bJpdrcLg1y3G", // (private key n not in 1..n-1)
+	},
+	{
+		"xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Q5JXayek4PRsn35jii4veMimro1xefsM58PgBMrvdYre8QyULY", // (invalid pubkey 020000000000000000000000000000000000000000000000000000000000000007)
+		"xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHL", // (invalid checksum)
+	},
+}
+
+var testVectors = []bip32tv{testVector1, testVector2, testVector3, testVector4}
 
 func TestDecodeBip32(t *testing.T) {
 	for _, tv := range testVectors {
@@ -197,7 +289,7 @@ func TestBip32DerivePrivate(t *testing.T) {
 		}
 
 		for _, fix := range tv.Tests {
-			child, err := master.DeriveChild(fix.Path)
+			child, err := master.DeriveChild(fix.Path, false)
 			if err != nil {
 				t.Errorf("DeriveChild: %v", err)
 				continue
@@ -215,29 +307,33 @@ func TestBip32DerivePrivate(t *testing.T) {
 				t.Errorf("DeriveChild: wrong xpub: %v vs %v for %v", pubWIF, fix.XPub, fix.Path)
 			}
 
-			// check fingerprint of THIS key (not parent fingerprint as in Bip32 WIF)
-			fingerprint := child.ThisKeyFingerprint()
-			if fingerprint != fix.Fpr {
-				t.Errorf("DeriveChild: wrong fingerprint: 0x%08x vs 0x%08x for %v", fingerprint, fix.Fpr, fix.Path)
-			}
+			// skip these for testVector3 and testVector4
+			if fix.PrvWif != "" {
 
-			// check Secret Key.
-			privKey, err := child.GetECPrivKey()
-			if err != nil {
-				t.Errorf("GetECPrivKey: %v", err)
-			} else {
-				privKeyWIF := EncodeECPrivKeyWIF(privKey, child.ChainParams())
-				if privKeyWIF != fix.PrvWif {
-					t.Errorf("DeriveChild: wrong secret key: %v vs %v for %v", privKeyWIF, fix.PrvWif, fix.Path)
+				// check fingerprint of THIS key (not parent fingerprint as in Bip32 WIF)
+				fingerprint := child.ThisKeyFingerprint()
+				if fingerprint != fix.Fpr {
+					t.Errorf("DeriveChild: wrong fingerprint: 0x%08x vs 0x%08x for %v", fingerprint, fix.Fpr, fix.Path)
 				}
-			}
 
-			// check Address.
-			pubKey, err := PubKeyToP2PKH(child.GetECPubKey()[:], child.ChainParams())
-			if err != nil {
-				t.Errorf("PubKeyToP2PKH: %v", err)
-			} else if pubKey != Address(fix.PubAddr) {
-				t.Errorf("DeriveChild: wrong public address: %v vs %v for %v", pubKey, fix.PubAddr, fix.Path)
+				// check Secret Key.
+				privKey, err := child.GetECPrivKey()
+				if err != nil {
+					t.Errorf("GetECPrivKey: %v", err)
+				} else {
+					privKeyWIF := EncodeECPrivKeyWIF(privKey, child.ChainParams())
+					if privKeyWIF != fix.PrvWif {
+						t.Errorf("DeriveChild: wrong secret key: %v vs %v for %v", privKeyWIF, fix.PrvWif, fix.Path)
+					}
+				}
+
+				// check Address.
+				pubKey, err := PubKeyToP2PKH(child.GetECPubKey()[:], child.ChainParams())
+				if err != nil {
+					t.Errorf("PubKeyToP2PKH: %v", err)
+				} else if pubKey != Address(fix.PubAddr) {
+					t.Errorf("DeriveChild: wrong public address: %v vs %v for %v", pubKey, fix.PubAddr, fix.Path)
+				}
 			}
 		}
 	}
@@ -256,40 +352,71 @@ func TestBip32DerivePublic(t *testing.T) {
 		}
 
 		for _, fix := range tv.Tests {
-			// only test non-hardened final key derivations (cannot publically derive from hardened keys)
-			last := len(fix.Path) - 1
-			if len(fix.Path) > 0 && fix.Path[last] < H {
-				// first, derive up to the 2nd-last key using private ckd
-				prior, err := master.DeriveChild(fix.Path[:last])
-				if err != nil {
-					t.Errorf("DeriveChild: %v", err)
+			// only test non-hardened derivation (cannot publically derive from hardened keys)
+			if len(fix.Path) > 0 {
+				// find the last hardened key in the path
+				firstNonH := len(fix.Path)
+				for firstNonH > 0 {
+					if (fix.Path[firstNonH-1] & H) != 0 { // if hardened, stop
+						break
+					}
+					firstNonH--
 				}
-				// derive the final key using public derivation
-				child, err := prior.Public().PublicCKD(fix.Path[last])
-				if err != nil {
-					t.Errorf("DeriveChild: %v", err)
-				}
+				if firstNonH < len(fix.Path) {
+					//log.Printf("test non-hardened: hardened %v non-hardened %v", firstNonH, len(fix.Path))
+					// first, derive up to lastH using private ckd
+					prior, err := master.DeriveChild(fix.Path[:firstNonH], false)
+					if err != nil {
+						t.Errorf("DeriveChild: %v", err)
+					}
+					// derive the final key using public derivation
+					child, err := prior.Public().PublicCKD(fix.Path[firstNonH:], false)
+					if err != nil {
+						t.Errorf("DeriveChild: %v", err)
+					}
 
-				// check XPub.
-				pubWIF := child.EncodeWIF()
-				if pubWIF != fix.XPub {
-					t.Errorf("DeriveChild: wrong xpub: %v vs %v for %v", pubWIF, fix.XPub, fix.Path)
-				}
+					// check XPub.
+					pubWIF := child.EncodeWIF()
+					if pubWIF != fix.XPub {
+						t.Errorf("DeriveChild: wrong xpub: %v vs %v for %v", pubWIF, fix.XPub, fix.Path)
+					}
 
-				// check fingerprint of THIS key (not parent fingerprint as in Bip32 WIF)
-				fingerprint := child.ThisKeyFingerprint()
-				if fingerprint != fix.Fpr {
-					t.Errorf("DeriveChild: wrong fingerprint: 0x%08x vs 0x%08x for %v", fingerprint, fix.Fpr, fix.Path)
-				}
+					// check fingerprint of THIS key (not parent fingerprint as in Bip32 WIF)
+					fingerprint := child.ThisKeyFingerprint()
+					if fingerprint != fix.Fpr {
+						t.Errorf("DeriveChild: wrong fingerprint: 0x%08x vs 0x%08x for %v", fingerprint, fix.Fpr, fix.Path)
+					}
 
-				// check Address.
-				pubKey, err := PubKeyToP2PKH(child.GetECPubKey()[:], child.ChainParams())
-				if err != nil {
-					t.Errorf("PubKeyToP2PKH: %v", err)
-				} else if pubKey != Address(fix.PubAddr) {
-					t.Errorf("DeriveChild: wrong public address: %v vs %v for %v", pubKey, fix.PubAddr, fix.Path)
+					// check Address.
+					pubKey, err := PubKeyToP2PKH(child.GetECPubKey()[:], child.ChainParams())
+					if err != nil {
+						t.Errorf("PubKeyToP2PKH: %v", err)
+					} else if pubKey != Address(fix.PubAddr) {
+						t.Errorf("DeriveChild: wrong public address: %v vs %v for %v", pubKey, fix.PubAddr, fix.Path)
+					}
 				}
 			}
 		}
+	}
+}
+
+func TestBip32InvalidKeys(t *testing.T) {
+	for it, tv := range testVector5 {
+		XPub := tv[0]
+		XPrv := tv[1]
+
+		// decode public key
+		_, err := DecodeBip32WIF(XPub, nil)
+		if err == nil {
+			t.Error(fmt.Errorf("XPub %v should not decode: %v", it, XPub))
+		}
+		//log.Printf("%v", err)
+
+		// decode private key
+		_, err = DecodeBip32WIF(XPrv, nil)
+		if err == nil {
+			t.Error(fmt.Errorf("XPrv %v should not decode: %v", it, XPrv))
+		}
+		//log.Printf("%v", err)
 	}
 }
