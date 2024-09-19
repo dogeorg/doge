@@ -21,7 +21,7 @@ const (
 	ECPubKeyUncompressedLen = 65 // bytes: [x04][32-X][32-Y]
 )
 
-type ECPrivKey = *[32]byte            // 32 bytes.
+type ECPrivKey = *[32]byte            // 32 byte big-endian uint256; 0 < pk < n in secp256k1.
 type ECPubKeyCompressed = *[33]byte   // 33 bytes with 0x02 or 0x03 prefix.
 type ECPubKeyUncompressed = *[65]byte // 65 bytes with 0x04 prefix.
 
