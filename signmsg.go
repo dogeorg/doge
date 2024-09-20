@@ -16,6 +16,7 @@ var schnorrSign = schnorr.New()
 var ErrInvalidPrivateKey = errors.New("invalid private key")
 
 // SignMessage signs an arbitrary message with a private key.
+// Returns an error if the private key is invalid.
 func SignMessage(privKey ECPrivKey, msg []byte) (SchnorrSignature, error) {
 	hash := blake256.Sum256(msg)
 	var priv secp256k1.PrivateKey
@@ -32,10 +33,11 @@ func SignMessage(privKey ECPrivKey, msg []byte) (SchnorrSignature, error) {
 }
 
 // VerifyMessage verifies an arbitrary message with a public key
-// (X-coordinate only)
-func VerifyMessage(pubKey ECPubKeySchnorr, msg []byte, sig []byte) bool {
+// and signature; the signature and public key are also validated,
+// i.e. all parameters can be untrusted data.
+func VerifyMessage(pubKey ECPubKeySchnorr, msg []byte, sig SchnorrSignature) bool {
 	hash := blake256.Sum256(msg)
-	vsig, err := schnorr.ParseSignature(sig)
+	vsig, err := schnorr.ParseSignature(sig[:])
 	if err != nil {
 		return false
 	}
