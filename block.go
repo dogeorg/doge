@@ -59,9 +59,9 @@ type BlockTxOut struct {
 	Script []byte // varied length
 }
 
-func DecodeBlock(blockBytes []byte) Block {
-	s := &Stream{b: blockBytes}
-	return readBlock(s)
+func DecodeBlock(blockBytes []byte) (Block, bool) {
+	s := NewStream(blockBytes)
+	return readBlock(s), s.Complete()
 }
 
 func readBlock(s *Stream) (b Block) {
@@ -69,7 +69,7 @@ func readBlock(s *Stream) (b Block) {
 	if b.Header.IsAuxPoW() {
 		b.AuxPoW = readMerkleTx(s)
 	}
-	numTx := s.var_uint()
+	numTx := s.VarUint()
 	for i := uint64(0); i < numTx; i++ {
 		b.Tx = append(b.Tx, readTx(s))
 	}
@@ -77,19 +77,19 @@ func readBlock(s *Stream) (b Block) {
 }
 
 func readHeader(s *Stream) (b BlockHeader) {
-	b.Version = s.uint32le()
-	b.PrevBlock = s.bytes(32)
-	b.MerkleRoot = s.bytes(32)
-	b.Timestamp = s.uint32le()
-	b.Bits = s.uint32le()
-	b.Nonce = s.uint32le()
+	b.Version = s.Uint32le()
+	b.PrevBlock = s.Bytes(32)
+	b.MerkleRoot = s.Bytes(32)
+	b.Timestamp = s.Uint32le()
+	b.Bits = s.Uint32le()
+	b.Nonce = s.Uint32le()
 	return
 }
 
 func readMerkleTx(s *Stream) *MerkleTx {
 	var m MerkleTx
 	m.CoinbaseTx = readTx(s)
-	m.ParentHash = s.bytes(32)
+	m.ParentHash = s.Bytes(32)
 	m.CoinbaseBranch = readMerkleBranch(s)
 	m.BlockchainBranch = readMerkleBranch(s)
 	m.ParentBlock = readHeader(s)
@@ -97,48 +97,50 @@ func readMerkleTx(s *Stream) *MerkleTx {
 }
 
 func readMerkleBranch(s *Stream) (b MerkleBranch) {
-	numHash := s.var_uint()
+	numHash := s.VarUint()
 	for i := uint64(0); i < numHash; i++ {
-		b.Hash = append(b.Hash, s.bytes(32))
+		b.Hash = append(b.Hash, s.Bytes(32))
 	}
-	b.SideMask = s.uint32le()
+	b.SideMask = s.Uint32le()
 	return
 }
 
-func DecodeTx(txBytes []byte) BlockTx {
-	s := &Stream{b: txBytes}
-	return readTx(s)
+func DecodeTx(txBytes []byte) (BlockTx, bool) {
+	s := NewStream(txBytes)
+	return readTx(s), s.Complete()
 }
 
 func readTx(s *Stream) (tx BlockTx) {
-	start := s.p
-	tx.Version = s.uint32le()
-	tx_in := s.var_uint()
+	start := s.pos
+	tx.Version = s.Uint32le()
+	tx_in := s.VarUint()
 	for i := uint64(0); i < tx_in; i++ {
 		tx.VIn = append(tx.VIn, readTxIn(s))
 	}
-	tx_out := s.var_uint()
+	tx_out := s.VarUint()
 	for i := uint64(0); i < tx_out; i++ {
 		tx.VOut = append(tx.VOut, readTxOut(s))
 	}
-	tx.LockTime = s.uint32le()
+	tx.LockTime = s.Uint32le()
 	// Compute TX hash from transaction bytes.
-	tx.TxID = TxHashHex(s.b[start:s.p])
+	if s.Valid() {
+		tx.TxID = TxHashHex(s.buf[start:s.pos])
+	}
 	return
 }
 
 func readTxIn(s *Stream) (in BlockTxIn) {
-	in.TxID = s.bytes(32)
-	in.VOut = s.uint32le()
-	script_len := s.var_uint()
-	in.Script = s.bytes(script_len)
-	in.Sequence = s.uint32le()
+	in.TxID = s.Bytes(32)
+	in.VOut = s.Uint32le()
+	script_len := s.VarUint()
+	in.Script = s.Bytes(script_len)
+	in.Sequence = s.Uint32le()
 	return
 }
 
 func readTxOut(s *Stream) (out BlockTxOut) {
-	out.Value = int64(s.uint64le())
-	script_len := s.var_uint()
-	out.Script = s.bytes(script_len)
+	out.Value = int64(s.Uint64le())
+	script_len := s.VarUint()
+	out.Script = s.Bytes(script_len)
 	return
 }
