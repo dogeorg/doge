@@ -1,6 +1,7 @@
 package koinu
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -26,4 +27,24 @@ func (val Koinu) String() string {
 		// whole integer
 		return fmt.Sprintf("%d", whole)
 	}
+}
+
+// Assert implements Marshaler and Unmarshaler interfaces
+var _ json.Marshaler = (*Koinu)(nil)
+var _ json.Unmarshaler = (*Koinu)(nil)
+
+func (val Koinu) MarshalJSON() ([]byte, error) {
+	// encode as a string with quotes
+	str := fmt.Sprintf("\"%s\"", val) // invokes String()
+	return []byte(str), nil
+}
+
+func (val *Koinu) UnmarshalJSON(data []byte) (err error) {
+	// strip quotes if encoded as a string
+	last := len(data) - 1
+	if data[0] == 34 && data[last] == 34 {
+		data = data[1 : last-1]
+	}
+	*val, err = ParseKoinu(string(data))
+	return
 }
