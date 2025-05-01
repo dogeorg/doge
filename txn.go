@@ -1,7 +1,16 @@
 package doge
 
-func TxHashHex(tx []byte) string {
-	hash := DoubleSha256(tx)
+// TxHashHex hashes a transaction and returns the hash as a hex-string.
+func TxHashHex(txBytes []byte) string {
+	hash := DoubleSha256(txBytes)
+	reverseInPlace(hash)
+	return HexEncode(hash)
+}
+
+// TxHashToHex returns the hex-string of a transaction hash.
+func TxHashToHex(txHash []byte) string {
+	hash := make([]byte, len(txHash))
+	copy(hash, txHash) // to avoid mutating the argument.
 	reverseInPlace(hash)
 	return HexEncode(hash)
 }
