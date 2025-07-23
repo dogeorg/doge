@@ -108,3 +108,62 @@ func DecodePushOP(script []byte, ofs int) (newOfs int, length uint32, ok bool) {
 	}
 	return ofs, 0, false // end of script or not a PUSH opcode
 }
+
+// ExpandScript re-creates the ScriptPubKey from a ScriptType and ScriptHashOrData
+func ExpandScript(typ ScriptType, data ScriptHashOrData) (script []byte) {
+	switch typ {
+	case ScriptTypeP2PK: // TX_PUBKEY
+		if len(data) == 33 {
+			// 33 bytes Compressed PubKey
+			script = make([]byte, 35)
+			script[0] = 33
+			copy(script[1:34], data)
+			script[34] = OP_CHECKSIG
+			return script
+		}
+		if len(data) == 65 {
+			// 65 bytes PubKey
+			script = make([]byte, 67)
+			script[0] = 65
+			copy(script[1:66], data)
+			script[66] = OP_CHECKSIG
+			return script
+		}
+
+	case ScriptTypeP2PKH: // TX_PUBKEYHASH
+		script = make([]byte, 25)
+		script[0] = OP_DUP
+		script[1] = OP_HASH160
+		script[2] = 20
+		copy(script[3:23], data) // 20 bytes PubKey Hash
+		script[23] = OP_EQUALVERIFY
+		script[24] = OP_CHECKSIG
+		return script
+
+	case ScriptTypeP2SH: // TX_SCRIPTHASH
+		script = make([]byte, 23)
+		script[0] = OP_HASH160
+		script[1] = 20
+		copy(script[2:22], data) // 20 bytes Script Hash
+		script[22] = OP_EQUAL
+		return script
+
+	case ScriptTypeMultiSig: // TX_MULTISIG
+		script = make([]byte, len(data)+1)
+		copy(script, data)
+		script[len(data)] = OP_CHECKMULTISIG
+		return script
+
+	case ScriptTypeNullData: // TX_NULL_DATA
+		script = make([]byte, len(data)+1)
+		script[0] = OP_RETURN
+		copy(script[1:], data)
+		return script
+
+	case ScriptTypeNonStandard: // TX_NONSTANDARD
+		return data
+
+	default:
+	}
+	return nil
+}
