@@ -13,3 +13,24 @@ func TestTxHash(t *testing.T) {
 		t.Fatalf("TxHashHex: wrong tx hash: %s vs %s", hash, pizza_hash)
 	}
 }
+
+func TestReverse(t *testing.T) {
+	if res := TxHashToHex(hx2b("01")); res != "01" {
+		t.Fatalf("reverseBytes: failed for 01 case: %v", res)
+	}
+	if res := TxHashToHex(hx2b("0102")); res != "0201" {
+		t.Fatalf("reverseBytes: failed for 0102 case: %v", res)
+	}
+	if res := TxHashToHex(hx2b("010203")); res != "030201" {
+		t.Fatalf("reverseBytes: failed for 010203 case: %v", res)
+	}
+	if res := TxHashToHex(hx2b("01020304")); res != "04030201" {
+		t.Fatalf("reverseBytes: failed for 01020304 case: %v", res)
+	}
+	if res := TxHashToHex(hx2b("0102030405")); res != "0504030201" {
+		t.Fatalf("reverseBytes: failed for 0102030405 case: %v", res)
+	}
+	if res := TxHashToHex(hx2b("cca7507897abc89628f450e8b1e0c6fca4ec3f7b34cccf55f3f531c659ff4d79")); res != "794dff59c631f5f355cfcc347b3feca4fcc6e0b1e850f42896c8ab977850a7cc" {
+		t.Fatalf("reverseBytes: failed for pizza case: %v", res)
+	}
+}

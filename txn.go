@@ -3,21 +3,23 @@ package doge
 // TxHashHex hashes a transaction and returns the hash as a hex-string.
 func TxHashHex(txBytes []byte) string {
 	hash := DoubleSha256(txBytes)
-	reverseInPlace(hash)
+	reverseBytes(hash, hash) // reverse in-place
 	return HexEncode(hash)
 }
 
 // TxHashToHex returns the hex-string of a transaction hash.
-func TxHashToHex(txHash []byte) string {
-	hash := make([]byte, len(txHash))
-	copy(hash, txHash) // to avoid mutating the argument.
-	reverseInPlace(hash)
-	return HexEncode(hash)
+func TxHashToHex(hash []byte) string {
+	return HexEncodeReversed(hash)
 }
 
-func reverseInPlace(a []byte) {
+// reverseBytes reverses a byte slice (`from` and `to` may alias for in-place reverse)
+func reverseBytes(from []byte, to []byte) {
 	// https://github.com/golang/go/wiki/SliceTricks#reversing
-	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
-		a[left], a[right] = a[right], a[left]
+	left, right := 0, len(from)-1
+	for ; left < right; left, right = left+1, right-1 {
+		to[left], to[right] = from[right], from[left]
+	}
+	if left == right { // for copy-case with odd number of bytes
+		to[left] = from[left]
 	}
 }

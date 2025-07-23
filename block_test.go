@@ -29,7 +29,7 @@ func TestBlock(t *testing.T) {
 		1000000000,
 		1045842885,
 	}
-	b, ok := DecodeBlock(hx2b(hex))
+	b, ok := DecodeBlock(hx2b(hex), true)
 	if !ok {
 		t.Errorf("TestBlock: failed to decode block")
 	}

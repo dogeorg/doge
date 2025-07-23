@@ -1,7 +1,6 @@
 package doge
 
 import (
-	"bytes"
 	"encoding/hex"
 )
 
@@ -10,8 +9,8 @@ func HexEncode(bytes []byte) string {
 }
 
 func HexEncodeReversed(data []byte) string {
-	b := bytes.Clone(data)
-	reverseInPlace(b)
+	b := make([]byte, len(data))
+	reverseBytes(data, b) // copy reversed
 	return hex.EncodeToString(b)
 }
 

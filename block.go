@@ -5,6 +5,12 @@ const (
 	CoinbaseVOut  = 0xffffffff
 )
 
+type HashID []byte
+
+func (id HashID) ToHex() string {
+	return TxHashToHex(id)
+}
+
 var CoinbaseTxID = [32]byte{}
 
 type Block struct {
@@ -20,6 +26,7 @@ type BlockHeader struct {
 	Timestamp  uint32
 	Bits       uint32
 	Nonce      uint32
+	BlockID    HashID // Block Hash (if decoded with calcHash=True)
 }
 
 func (b *BlockHeader) IsAuxPoW() bool {
@@ -44,7 +51,7 @@ type BlockTx struct {
 	VIn      []BlockTxIn
 	VOut     []BlockTxOut
 	LockTime uint32
-	TxID     string // hex, computed from tx data
+	TxID     HashID // Transaction Hash (if decoded with calcHash=True)
 }
 
 type BlockTxIn struct {
@@ -59,40 +66,45 @@ type BlockTxOut struct {
 	Script []byte // varied length
 }
 
-func DecodeBlock(blockBytes []byte) (Block, bool) {
+func DecodeBlock(blockBytes []byte, calcHash bool) (Block, bool) {
 	s := NewStream(blockBytes)
-	return readBlock(s), s.Complete()
+	return readBlock(s, calcHash), s.Complete()
 }
 
-func readBlock(s *Stream) (b Block) {
-	b.Header = readHeader(s)
+func readBlock(s *Stream, calcHash bool) (b Block) {
+	b.Header = readHeader(s, calcHash)
 	if b.Header.IsAuxPoW() {
-		b.AuxPoW = readMerkleTx(s)
+		b.AuxPoW = readMerkleTx(s, calcHash)
 	}
 	numTx := s.VarUint()
 	for i := uint64(0); i < numTx; i++ {
-		b.Tx = append(b.Tx, readTx(s))
+		b.Tx = append(b.Tx, readTx(s, calcHash))
 	}
 	return
 }
 
-func readHeader(s *Stream) (b BlockHeader) {
+func readHeader(s *Stream, calcHash bool) (b BlockHeader) {
+	start := s.pos
 	b.Version = s.Uint32le()
 	b.PrevBlock = s.Bytes(32)
 	b.MerkleRoot = s.Bytes(32)
 	b.Timestamp = s.Uint32le()
 	b.Bits = s.Uint32le()
 	b.Nonce = s.Uint32le()
+	// Compute Block hash from header bytes.
+	if calcHash && s.Valid() {
+		b.BlockID = DoubleSha256(s.buf[start:s.pos])
+	}
 	return
 }
 
-func readMerkleTx(s *Stream) *MerkleTx {
+func readMerkleTx(s *Stream, calcHash bool) *MerkleTx {
 	var m MerkleTx
-	m.CoinbaseTx = readTx(s)
+	m.CoinbaseTx = readTx(s, calcHash)
 	m.ParentHash = s.Bytes(32)
 	m.CoinbaseBranch = readMerkleBranch(s)
 	m.BlockchainBranch = readMerkleBranch(s)
-	m.ParentBlock = readHeader(s)
+	m.ParentBlock = readHeader(s, calcHash)
 	return &m
 }
 
@@ -105,12 +117,12 @@ func readMerkleBranch(s *Stream) (b MerkleBranch) {
 	return
 }
 
-func DecodeTx(txBytes []byte) (BlockTx, bool) {
+func DecodeTx(txBytes []byte, calcHash bool) (BlockTx, bool) {
 	s := NewStream(txBytes)
-	return readTx(s), s.Complete()
+	return readTx(s, calcHash), s.Complete()
 }
 
-func readTx(s *Stream) (tx BlockTx) {
+func readTx(s *Stream, calcHash bool) (tx BlockTx) {
 	start := s.pos
 	tx.Version = s.Uint32le()
 	tx_in := s.VarUint()
@@ -123,8 +135,8 @@ func readTx(s *Stream) (tx BlockTx) {
 	}
 	tx.LockTime = s.Uint32le()
 	// Compute TX hash from transaction bytes.
-	if s.Valid() {
-		tx.TxID = TxHashHex(s.buf[start:s.pos])
+	if calcHash && s.Valid() {
+		tx.TxID = DoubleSha256(s.buf[start:s.pos])
 	}
 	return
 }
