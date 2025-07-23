@@ -4,6 +4,8 @@ import (
 	"errors"
 )
 
+type Address string // Dogecoin address (base-58 Public Key Hash aka PKH)
+
 func Hash160(bytes []byte) []byte {
 	return RIPEMD160(Sha256(bytes))
 }
