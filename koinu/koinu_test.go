@@ -25,7 +25,7 @@ func TestJsonUnmarshal(t *testing.T) {
 		t.Errorf("error unmarshaling JSON: %v", err)
 	}
 
-	testParse(t, "1000", 100000000000)
+	testParse(t, balance.Balance.String(), 100000000000)
 }
 
 func TestParseKoinu(t *testing.T) {
