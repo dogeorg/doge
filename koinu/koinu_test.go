@@ -1,6 +1,7 @@
 package koinu
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -13,12 +14,27 @@ func TestKoinuString(t *testing.T) {
 	}
 }
 
+type TestBalance struct {
+	Balance Koinu `json:"balance"`
+}
+
+func TestJsonUnmarshal(t *testing.T) {
+	var balance TestBalance
+	err := json.Unmarshal([]byte(`{"balance": "1000"}`), &balance)
+	if err != nil {
+		t.Errorf("error unmarshaling JSON: %v", err)
+	}
+
+	testParse(t, "1000", 100000000000)
+}
+
 func TestParseKoinu(t *testing.T) {
 	// simple cases
 	testParse(t, "0", 0)
 	testParse(t, "1", 100000000)
 	testParse(t, "1.", 100000000)
 	testParse(t, "1.0", 100000000)
+	testParse(t, "1000", 100000000000)
 
 	// whole numbers
 	testParse(t, "1", 100000000)
