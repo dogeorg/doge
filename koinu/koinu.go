@@ -42,9 +42,11 @@ func (val Koinu) MarshalJSON() ([]byte, error) {
 func (val *Koinu) UnmarshalJSON(data []byte) (err error) {
 	// strip quotes if encoded as a string
 	last := len(data) - 1
+
 	if data[0] == 34 && data[last] == 34 {
-		data = data[1 : last-1]
+		data = data[1:last]
 	}
+
 	*val, err = ParseKoinu(string(data))
 	return
 }
