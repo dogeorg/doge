@@ -7,10 +7,46 @@ import (
 )
 
 func TestKoinuString(t *testing.T) {
+	// should correctly convert whole-part and decimal-part
 	val := Koinu(12*OneDoge + (OneDoge / 4)) // 12.25
 	txt := fmt.Sprintf("%v", val)
 	if txt != "12.25" {
 		t.Errorf("incorrect koinu formatting: %v (expecting 12.25)", txt)
+	}
+
+	// should omit decimals for a whole number of doge
+	val = Koinu(1200000000) // 12.0
+	txt = fmt.Sprintf("%v", val)
+	if txt != "12" {
+		t.Errorf("incorrect koinu formatting: %v (expecting 12)", txt)
+	}
+
+	// should trim extra zeroes on the decimal part
+	val = Koinu(100010000) // 1.0001
+	txt = fmt.Sprintf("%v", val)
+	if txt != "1.0001" {
+		t.Errorf("incorrect koinu formatting: %v (expecting 1.0001)", txt)
+	}
+
+	// requires correct zero-padding on the decimal part
+	val = Koinu(100000001) // 1.00000001
+	txt = fmt.Sprintf("%v", val)
+	if txt != "1.00000001" {
+		t.Errorf("incorrect koinu formatting: %v (expecting 1.00000001)", txt)
+	}
+
+	// requires "0." prefix on fractional values
+	val = Koinu(10000) // 0.0001
+	txt = fmt.Sprintf("%v", val)
+	if txt != "0.0001" {
+		t.Errorf("incorrect koinu formatting: %v (expecting 0.0001)", txt)
+	}
+
+	// requires "0." prefix on fractional values
+	val = Koinu(10000) // 0.0001
+	txt = fmt.Sprintf("%v", val)
+	if txt != "0.0001" {
+		t.Errorf("incorrect koinu formatting: %v (expecting 0.0001)", txt)
 	}
 }
 

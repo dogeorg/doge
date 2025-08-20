@@ -22,7 +22,7 @@ func (val Koinu) String() string {
 	part := val % OneDoge
 	if part != 0 {
 		// decimal number: trim off trailing zeroes in the decimal-part
-		return strings.TrimRight(fmt.Sprintf("%d.%d", whole, part), "0")
+		return strings.TrimRight(fmt.Sprintf("%d.%08d", whole, part), "0")
 	} else {
 		// whole integer
 		return fmt.Sprintf("%d", whole)
