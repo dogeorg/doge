@@ -2,6 +2,7 @@ package doge
 
 import (
 	"bytes"
+	"encoding/hex"
 	"testing"
 )
 
@@ -17,6 +18,26 @@ func TestHex(t *testing.T) {
 	}
 	if !bytes.Equal(out, data) {
 		t.Errorf("HexDecode: decoded bytes don't match: %v vs %v", out, data)
+	}
+}
+
+func TestHexEncodeReversed(t *testing.T) {
+	original := []byte("\x00\x01Hello\xffWorld!\x0d\x0a")
+	manually_reversed := []byte("\x0a\x0d!dlroW\xffolleH\x01\x00")
+	reversed := HexEncodeReversed(original)
+	rbytes, err := hex.DecodeString(reversed)
+	if err != nil {
+		t.Errorf("HexEncodeReversed: %v", err)
+	}
+	if !bytes.Equal(rbytes, manually_reversed) {
+		t.Errorf("HexEncodeReversed: bytes don't match manually reversed copy: %x vs %x", rbytes, manually_reversed)
+	}
+	decoded, err := HexDecodeReversed(reversed)
+	if err != nil {
+		t.Errorf("HexDecodeReversed: %v", err)
+	}
+	if !bytes.Equal(decoded, original) {
+		t.Errorf("HexDecodeReversed: bytes don't round-trip: %x vs %x", decoded, original)
 	}
 }
 
