@@ -18,6 +18,15 @@ func HexDecode(str string) ([]byte, error) {
 	return hex.DecodeString(str)
 }
 
+func HexDecodeReversed(str string) ([]byte, error) {
+	b, err := hex.DecodeString(str)
+	if err != nil {
+		return b, err
+	}
+	reverseBytes(b, b) // reverse in-place
+	return b, nil
+}
+
 func IsValidHex(hex string) bool {
 	// eh, this will do.
 	_, err := HexDecode(hex)
