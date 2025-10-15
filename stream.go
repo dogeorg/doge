@@ -1,6 +1,7 @@
 package doge
 
 // Stream is a stream of bytes with read methods.
+// DEPRECATED - use `Decoder` instead.
 type Stream struct {
 	buf []byte
 	pos uint64

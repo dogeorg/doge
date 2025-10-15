@@ -10,7 +10,7 @@ func TestHex(t *testing.T) {
 	data := []byte("\x00\x01Hello\xffWorld!\x0d\x0a")
 	hex := HexEncode(data)
 	if hex != "000148656c6c6fff576f726c64210d0a" {
-		t.Errorf("HexEncode: wrong hex: " + hex)
+		t.Errorf("HexEncode: wrong hex: %v", hex)
 	}
 	out, err := HexDecode(hex)
 	if err != nil {
