@@ -178,9 +178,6 @@ func EncodeTx(tx BlockTx) ([]byte, error) {
 		if len(vin.TxID) != 32 {
 			return nil, errors.New("EncodeTx: wrong TxID length")
 		}
-		if len(vin.Script) < 1 {
-			return nil, errors.New("EncodeTx: invalid script length")
-		}
 		encoder.Bytes(vin.TxID)                  // in.TxID       32
 		encoder.UInt32(vin.VOut)                 // in.VOut       4
 		encoder.VarUInt(uint64(len(vin.Script))) // script_len    1
@@ -191,7 +188,7 @@ func EncodeTx(tx BlockTx) ([]byte, error) {
 	for _, vout := range tx.VOut {
 		encoder.Int64(vout.Value) // out.Value    8
 		if len(vout.Script) < 1 {
-			return nil, errors.New("EncodeTx: invalid script length")
+			return nil, errors.New("EncodeTx: output script cannot be empty")
 		}
 		encoder.VarUInt(uint64(len(vout.Script))) // script_len   1
 		encoder.Bytes(vout.Script)                // out.Script   25 (P2PKH)

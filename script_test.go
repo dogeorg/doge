@@ -112,3 +112,27 @@ func TestExpandScript(t *testing.T) {
 		t.Errorf("Wrong MultiSig script: %x vs %x", script, ms_scr)
 	}
 }
+
+func TestP2PKHScript(t *testing.T) {
+	// P2PKH
+	p2pkh_script := hx2b("76a91454f6fb64f14b756d118a96a57a2f9ebf4b4708fe88ac")
+	address := Address("DCtMAyy9w2QCrWMRdZ28Kn7GwMfCEp2irP")
+	script, err := P2PKHScriptFromAddress(address)
+	if err != nil {
+		t.Errorf("P2PKHScriptFromAddress: %v", err)
+	} else if !bytes.Equal(script, p2pkh_script) {
+		t.Errorf("P2PKHScriptFromAddress: wrong P2PKH script: %x vs %x", script, p2pkh_script)
+	}
+}
+
+func TestP2SHScript(t *testing.T) {
+	// P2SH
+	p2sh_script := hx2b("a914748284390f9e263a4b766a75d0633c50426eb87587")
+	redeem_script := hx2b("5121022afc20bf379bc96a2f4e9e63ffceb8652b2b6a097f63fbee6ecec2a49a48010e2103a767c7221e9f15f870f1ad9311f5ab937d79fcaeee15bb2c722bca515581b4c052ae")
+	script, err := P2SHScriptFromRedeemScript(redeem_script)
+	if err != nil {
+		t.Errorf("P2SHScriptFromScript: %v", err)
+	} else if !bytes.Equal(script, p2sh_script) {
+		t.Errorf("P2SHScriptFromScript: wrong P2SH script: %x vs %x", script, p2sh_script)
+	}
+}

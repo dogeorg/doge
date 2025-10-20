@@ -1,5 +1,7 @@
 package doge
 
+import "errors"
+
 const MAX_OP_RETURN_RELAY = 83 // from Core IsStandard in policy.cpp
 
 // ScriptType is inferred from the script by pattern-matching the bytecode
@@ -166,4 +168,51 @@ func ExpandScript(typ ScriptType, data ScriptHashOrData) (script []byte) {
 	default:
 	}
 	return nil
+}
+
+// P2PKHScriptFromAddress creates a P2PKH script from a Dogecoin address.
+// Returns the script or an error if the address is invalid.
+func P2PKHScriptFromAddress(address Address) ([]byte, error) {
+	pubKeyHash, err := Base58DecodeCheck(string(address))
+	if err != nil {
+		return nil, errors.New("P2PKHScriptFromAddress: invalid address")
+	}
+	return P2PKHScript(pubKeyHash[1:]) // remove version byte
+}
+
+// P2PKHScript creates a P2PKH script from a pubKeyHash.
+// Returns the script or an error if the pubKeyHash length is invalid.
+func P2PKHScript(pubKeyHash []byte) ([]byte, error) {
+	if len(pubKeyHash) != 20 {
+		return nil, errors.New("P2PKHScript: invalid pubKeyHash length")
+	}
+	script := make([]byte, 25)
+	script[0] = OP_DUP
+	script[1] = OP_HASH160
+	script[2] = 20
+	copy(script[3:23], pubKeyHash)
+	script[23] = OP_EQUALVERIFY
+	script[24] = OP_CHECKSIG
+	return script, nil
+}
+
+// P2SHScriptFromRedeemScript creates a P2SH script from a redeem script.
+// Returns the script or an error if the redeem script length is invalid.
+func P2SHScriptFromRedeemScript(redeemScript []byte) ([]byte, error) {
+	scriptHash := Hash160(redeemScript)
+	return P2SHScript(scriptHash)
+}
+
+// P2SHScript creates a P2SH script from a redeem script hash.
+// Returns the script or an error if the hash length is invalid.
+func P2SHScript(scriptHash []byte) ([]byte, error) {
+	if len(scriptHash) != 20 {
+		return nil, errors.New("P2SHScript: invalid scriptHash length")
+	}
+	script := make([]byte, 23)
+	script[0] = OP_HASH160
+	script[1] = 20
+	copy(script[2:22], scriptHash)
+	script[22] = OP_EQUAL
+	return script, nil
 }
