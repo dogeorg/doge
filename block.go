@@ -1,5 +1,7 @@
 package doge
 
+import "errors"
+
 const (
 	VersionAuxPoW = 256
 	CoinbaseVOut  = 0xffffffff
@@ -66,6 +68,9 @@ type BlockTxOut struct {
 	Script []byte // varied length
 }
 
+// DecodeBlock decodes a block from a byte slice.
+// If calcHash is true, the block hash is calculated and stored in the Block.BlockID field.
+// Returns false if the serialized block data is malformed.
 func DecodeBlock(blockBytes []byte, calcHash bool) (Block, bool) {
 	s := NewStream(blockBytes)
 	return readBlock(s, calcHash), s.Complete()
@@ -117,6 +122,9 @@ func readMerkleBranch(s *Stream) (b MerkleBranch) {
 	return
 }
 
+// DecodeTx decodes a transaction from a byte slice.
+// If calcHash is true, the transaction hash is calculated and stored in the BlockTx.TxID field.
+// Returns false if the serialized transaction data is malformed.
 func DecodeTx(txBytes []byte, calcHash bool) (BlockTx, bool) {
 	s := NewStream(txBytes)
 	return readTx(s, calcHash), s.Complete()
@@ -125,12 +133,12 @@ func DecodeTx(txBytes []byte, calcHash bool) (BlockTx, bool) {
 func readTx(s *Stream, calcHash bool) (tx BlockTx) {
 	start := s.pos
 	tx.Version = s.Uint32le()
-	tx_in := s.VarUint()
-	for i := uint64(0); i < tx_in; i++ {
+	num_tx_in := s.VarUint()
+	for i := uint64(0); i < num_tx_in; i++ {
 		tx.VIn = append(tx.VIn, readTxIn(s))
 	}
-	tx_out := s.VarUint()
-	for i := uint64(0); i < tx_out; i++ {
+	num_tx_out := s.VarUint()
+	for i := uint64(0); i < num_tx_out; i++ {
 		tx.VOut = append(tx.VOut, readTxOut(s))
 	}
 	tx.LockTime = s.Uint32le()
@@ -155,4 +163,39 @@ func readTxOut(s *Stream) (out BlockTxOut) {
 	script_len := s.VarUint()
 	out.Script = s.Bytes(script_len)
 	return
+}
+
+// EncodeTx encodes a transaction to a byte slice.
+// This function does not fail (Go panics if out of memory).
+func EncodeTx(tx BlockTx) ([]byte, error) {
+	encoder := Encode(10 + len(tx.VIn)*66 + len(tx.VOut)*33)
+	encoder.UInt32(tx.Version) // tx.Version
+	if len(tx.VIn) < 1 || len(tx.VOut) < 1 {
+		return nil, errors.New("EncodeTx: must have at least one input and one output")
+	}
+	encoder.VarUInt(uint64(len(tx.VIn))) // num_tx_in
+	for _, vin := range tx.VIn {
+		if len(vin.TxID) != 32 {
+			return nil, errors.New("EncodeTx: wrong TxID length")
+		}
+		if len(vin.Script) < 1 {
+			return nil, errors.New("EncodeTx: invalid script length")
+		}
+		encoder.Bytes(vin.TxID)                  // in.TxID       32
+		encoder.UInt32(vin.VOut)                 // in.VOut       4
+		encoder.VarUInt(uint64(len(vin.Script))) // script_len    1
+		encoder.Bytes(vin.Script)                // in.Script     33 (P2PKH)
+		encoder.UInt32(vin.Sequence)             // in.Sequence   4
+	}
+	encoder.VarUInt(uint64(len(tx.VOut))) // num_tx_out
+	for _, vout := range tx.VOut {
+		encoder.Int64(vout.Value) // out.Value    8
+		if len(vout.Script) < 1 {
+			return nil, errors.New("EncodeTx: invalid script length")
+		}
+		encoder.VarUInt(uint64(len(vout.Script))) // script_len   1
+		encoder.Bytes(vout.Script)                // out.Script   25 (P2PKH)
+	}
+	encoder.UInt32(tx.LockTime) // tx.LockTime
+	return encoder.Result(), nil
 }

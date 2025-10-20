@@ -1,6 +1,7 @@
 package doge
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 )
@@ -50,4 +51,58 @@ func collectOutVals(b *Block) (outVals []int64) {
 		}
 	}
 	return
+}
+
+func TestEncodeTx(t *testing.T) {
+	tx := BlockTx{
+		Version: 1,
+		VIn: []BlockTxIn{
+			{TxID: hx2b("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"), VOut: 0, Script: hx2b("05060708"), Sequence: 0xffffffff},
+			{TxID: hx2b("9232948329483294832948329483294832948329483294832948329483294832"), VOut: 9, Script: hx2b("3A5B7C9D"), Sequence: 0xfffffffe},
+		},
+		VOut: []BlockTxOut{
+			{Value: 1000000000, Script: hx2b("1502030405060708090a0b0c0d0e0f101112131415")},
+			{Value: 9521803654, Script: hx2b("159E8A76543210FEDCBA9876543210FEDCBA987654")},
+		},
+		LockTime: 0xffffffff,
+	}
+	txBytes, err := EncodeTx(tx)
+	if err != nil {
+		t.Errorf("TestEncodeTx: failed to encode transaction: %v", err)
+	}
+	tx2, ok := DecodeTx(txBytes, false)
+	if !ok {
+		t.Errorf("TestEncodeTx: failed to decode transaction (round trip failed)")
+	}
+	if tx2.Version != tx.Version {
+		t.Errorf("TestEncodeTx: wrong version: %v vs %v", tx2.Version, tx.Version)
+	}
+	if len(tx2.VIn) != len(tx.VIn) {
+		t.Errorf("TestEncodeTx: wrong number of inputs: %v vs %v", len(tx2.VIn), len(tx.VIn))
+	}
+	if len(tx2.VOut) != len(tx.VOut) {
+		t.Errorf("TestEncodeTx: wrong number of outputs: %v vs %v", len(tx2.VOut), len(tx.VOut))
+	}
+	for i, vin := range tx.VIn {
+		if !bytes.Equal(tx2.VIn[i].TxID, vin.TxID) {
+			t.Errorf("TestEncodeTx: wrong input: %v vs %v", tx2.VIn[i].TxID, vin.TxID)
+		}
+		if tx2.VIn[i].VOut != vin.VOut {
+			t.Errorf("TestEncodeTx: wrong input: %v vs %v", tx2.VIn[i].VOut, vin.VOut)
+		}
+		if !bytes.Equal(tx2.VIn[i].Script, vin.Script) {
+			t.Errorf("TestEncodeTx: wrong input: %v vs %v", tx2.VIn[i].Script, vin.Script)
+		}
+		if tx2.VIn[i].Sequence != vin.Sequence {
+			t.Errorf("TestEncodeTx: wrong input: %v vs %v", tx2.VIn[i].Sequence, vin.Sequence)
+		}
+	}
+	for i, vout := range tx.VOut {
+		if !bytes.Equal(tx2.VOut[i].Script, vout.Script) {
+			t.Errorf("TestEncodeTx: wrong output: %v vs %v", tx2.VOut[i].Script, vout.Script)
+		}
+		if tx2.VOut[i].Value != vout.Value {
+			t.Errorf("TestEncodeTx: wrong output: %v vs %v", tx2.VOut[i].Value, vout.Value)
+		}
+	}
 }
