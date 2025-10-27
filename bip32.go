@@ -45,6 +45,12 @@ func (key *Bip32Key) ChainParams() *ChainParams {
 	return key.chain
 }
 
+// ChildNumber returns the child number of this key.
+// ser32(i) for i in xi = xpar/i, with xi the key being serialized. (0x00000000 if master key)
+func (key *Bip32Key) ChildNumber() uint32 {
+	return key.child_number
+}
+
 // EncodeWIF encodes this key in Bip32 WIF format (dgpv,dgub)
 func (key *Bip32Key) EncodeWIF() string {
 	return EncodeBip32WIF(key)
