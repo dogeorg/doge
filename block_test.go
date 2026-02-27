@@ -30,9 +30,9 @@ func TestBlock(t *testing.T) {
 		1000000000,
 		1045842885,
 	}
-	b, ok := DecodeBlock(hx2b(hex), true)
-	if !ok {
-		t.Errorf("TestBlock: failed to decode block")
+	b, err := DecodeBlockErr(hx2b(hex), true)
+	if err != nil {
+		t.Errorf("TestBlock: failed to decode block: %v", err)
 	}
 	// log.Printf("Block: ver %x prev %v merkel %v ntx %v", b.Header.Version, revhex(b.Header.PrevBlock), revhex(b.Header.MerkleRoot), len(b.Tx))
 	if len(b.Tx) != expectTxs {
@@ -70,9 +70,9 @@ func TestEncodeTx(t *testing.T) {
 	if err != nil {
 		t.Errorf("TestEncodeTx: failed to encode transaction: %v", err)
 	}
-	tx2, ok := DecodeTx(txBytes, false)
-	if !ok {
-		t.Errorf("TestEncodeTx: failed to decode transaction (round trip failed)")
+	tx2, err := DecodeTxErr(txBytes, false)
+	if err != nil {
+		t.Errorf("TestEncodeTx: failed to decode transaction (round trip failed): %v", err)
 	}
 	if tx2.Version != tx.Version {
 		t.Errorf("TestEncodeTx: wrong version: %v vs %v", tx2.Version, tx.Version)
@@ -104,5 +104,20 @@ func TestEncodeTx(t *testing.T) {
 		if tx2.VOut[i].Value != vout.Value {
 			t.Errorf("TestEncodeTx: wrong output: %v vs %v", tx2.VOut[i].Value, vout.Value)
 		}
+	}
+}
+
+const (
+	segWitTxHex  = "01000000000101438afdb24e414d54cc4a17a95f3d40be90d23dfeeb07a48e9e782178efddd8890100000000fdffffff020db9a60000000000160014b549d227c9edd758288112fe3573c1f85240166880a81201000000001976a914ae28f233464e6da03c052155119a413d13f3380188ac024730440220200254b765f25126334b8de16ee4badf57315c047243942340c16cffd9b11196022074a9476633f093f229456ad904a9d97e26c271fc4f01d0501dec008e4aae71c2012102c37a3c5b21a5991d3d7b1e203be195be07104a1a19e5c2ed82329a56b431213000000000"
+	segWitTxHash = "c06aaaa2753dc4e74dd4fe817522dc3c126fd71792dd9acfefdaff11f8ff954d"
+)
+
+func TestSegWitTx(t *testing.T) {
+	tx, err := DecodeTxErr(hx2b(segWitTxHex), true)
+	if err != nil {
+		t.Errorf("TestSegWitTx: failed to decode transaction: %v", err)
+	}
+	if tx.TxID.ToHex() != segWitTxHash {
+		t.Errorf("TestSegWitTx: wrong transaction hash: %v vs %v", tx.TxID.ToHex(), segWitTxHash)
 	}
 }
