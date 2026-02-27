@@ -166,8 +166,8 @@ func readMerkleBranch(s *Stream) (b MerkleBranch) {
 // DecodeTx decodes a transaction from a byte slice (original API)
 // If calcHash is true, the transaction hash is calculated and stored in the BlockTx.TxID field.
 // Returns false if the serialized tx data is malformed.
-func DecodeTx(txBytes []byte, txid string) (BlockTx, bool) {
-	tx, err := DecodeTxErr(txBytes, true)
+func DecodeTx(txBytes []byte, calcHash bool) (BlockTx, bool) {
+	tx, err := DecodeTxErr(txBytes, calcHash)
 	return tx, err == nil
 }
 
