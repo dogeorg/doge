@@ -11,7 +11,26 @@ const (
 	CoinbaseVOut  = 0xffffffff
 	MaxScriptSize = 10_000     // MAX_SCRIPT_SIZE from Dogecoin Core (script.h)
 	MaxVarIntSize = 0x02000000 // MAX_SIZE from Dogecoin Core (serialize.h)
+
+	// Minimum on-wire byte lengths for the elements of a transaction. These
+	// tight lower bounds let varint-driven loops bail out before allocating
+	// huge slices or spinning uint64-max iterations against an exhausted
+	// stream — defending against the "varint claims more entries than the
+	// buffer could possibly encode" class of malformed input.
+	minTxInBytes  = 32 + 4 + 1 + 4                               // prevout + vout + script_len(0) + sequence = 41
+	minTxOutBytes = 8 + 1                                        // value + script_len(0) = 9
+	minTxBytes    = 4 + 1 + minTxInBytes + 1 + minTxOutBytes + 4 // version + vin_count + minimal vin + vout_count + minimal vout + locktime = 60
+	minHashBytes  = 32                                           // a merkle-branch hash
 )
+
+// remaining returns the number of unread bytes in the stream, clamped to 0
+// when the stream has already overflowed (s.pos > s.len).
+func streamRemaining(s *Stream) uint64 {
+	if s.pos >= s.len {
+		return 0
+	}
+	return s.len - s.pos
+}
 
 type HashID []byte
 
@@ -112,6 +131,9 @@ func readBlock(s *Stream, calcHash bool) (b Block, err error) {
 		b.AuxPoW = mtx
 	}
 	numTx := s.VarUint()
+	if numTx > streamRemaining(s)/minTxBytes {
+		return b, fmt.Errorf("invalid block: declared tx count %d exceeds remaining buffer (%d bytes)", numTx, streamRemaining(s))
+	}
 	for i := uint64(0); i < numTx; i++ {
 		tx, err := readTx(s, calcHash)
 		if err != nil {
@@ -156,6 +178,12 @@ func readMerkleTx(s *Stream, calcHash bool) (*MerkleTx, error) {
 
 func readMerkleBranch(s *Stream) (b MerkleBranch) {
 	numHash := s.VarUint()
+	if numHash > streamRemaining(s)/minHashBytes {
+		// Mark the stream invalid so callers see truncation instead of
+		// silently producing a short hash list.
+		s.pos = s.len + 1
+		return
+	}
 	for i := uint64(0); i < numHash; i++ {
 		b.Hash = append(b.Hash, s.Bytes(32))
 	}
@@ -232,10 +260,17 @@ func readTx(s *Stream, calcHash bool) (tx BlockTx, err error) {
 		flags ^= 1 // Core toggles the low bit.
 		for i := uint64(0); i < tx_in; i++ {
 			numStackItems := s.VarUint()
+			// Each stack item is at least 1 byte (its own length varint).
+			if numStackItems > streamRemaining(s) {
+				return tx, fmt.Errorf("invalid transaction: witness stack count %d for vin %v exceeds remaining buffer (%d bytes)", numStackItems, i, streamRemaining(s))
+			}
 			for k := uint64(0); k < numStackItems; k++ {
 				itemLen := s.VarUint()
 				if itemLen > MaxVarIntSize {
 					return tx, fmt.Errorf("invalid transaction: witness data too large: %v for vin %v stack item %v", itemLen, i, k)
+				}
+				if itemLen > streamRemaining(s) {
+					return tx, fmt.Errorf("invalid transaction: witness item length %d for vin %v stack item %v exceeds remaining buffer (%d bytes)", itemLen, i, k, streamRemaining(s))
 				}
 				itemData := s.Bytes(itemLen)
 				tx.VIn[i].Witness = append(tx.VIn[i].Witness, itemData)
@@ -275,6 +310,9 @@ func readTx(s *Stream, calcHash bool) (tx BlockTx, err error) {
 }
 
 func readVinVout(s *Stream, tx_in uint64) (VIn []BlockTxIn, VOut []BlockTxOut, err error) {
+	if tx_in > streamRemaining(s)/minTxInBytes {
+		return nil, nil, fmt.Errorf("invalid transaction: declared input count %d exceeds remaining buffer (%d bytes)", tx_in, streamRemaining(s))
+	}
 	for i := uint64(0); i < tx_in; i++ {
 		vin, err := readTxIn(s)
 		if err != nil {
@@ -283,6 +321,9 @@ func readVinVout(s *Stream, tx_in uint64) (VIn []BlockTxIn, VOut []BlockTxOut, e
 		VIn = append(VIn, vin)
 	}
 	tx_out := s.VarUint()
+	if tx_out > streamRemaining(s)/minTxOutBytes {
+		return nil, nil, fmt.Errorf("invalid transaction: declared output count %d exceeds remaining buffer (%d bytes)", tx_out, streamRemaining(s))
+	}
 	for i := uint64(0); i < tx_out; i++ {
 		vout, err := readTxOut(s)
 		if err != nil {
