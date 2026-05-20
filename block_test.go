@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestBlock(t *testing.T) {
@@ -119,5 +120,37 @@ func TestSegWitTx(t *testing.T) {
 	}
 	if tx.TxID.ToHex() != segWitTxHash {
 		t.Errorf("TestSegWitTx: wrong transaction hash: %v vs %v", tx.TxID.ToHex(), segWitTxHash)
+	}
+}
+
+// TestDecodeTxErr_MaliciousVinCount is a regression test for the previously
+// unbounded "varint claims more entries than the buffer could possibly
+// encode" class of input. Before bounds checking, the readVinVout loop ran
+// uint64-max times against an exhausted stream, consuming CPU/memory until
+// process exit. The decoder must now return an error promptly instead.
+func TestDecodeTxErr_MaliciousVinCount(t *testing.T) {
+	cases := map[string][]byte{
+		// Version + 0xff prefix = 8-byte varint claiming max-uint64 vins.
+		"huge_vin_count": {0x01, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+		// Version + vin_count varint = 100, no vin body — the bounds check
+		// should also reject this since 100*41 > remaining.
+		"truncated_vins": {0x01, 0x00, 0x00, 0x00, 0x64},
+	}
+	for name, raw := range cases {
+		t.Run(name, func(t *testing.T) {
+			done := make(chan error, 1)
+			go func() {
+				_, err := DecodeTxErr(raw, false)
+				done <- err
+			}()
+			select {
+			case err := <-done:
+				if err == nil {
+					t.Errorf("expected error for input %x, got nil", raw)
+				}
+			case <-time.After(500 * time.Millisecond):
+				t.Fatalf("DecodeTxErr did not return within 500ms for input %x — bounds check missing", raw)
+			}
+		})
 	}
 }
