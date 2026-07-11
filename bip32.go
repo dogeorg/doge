@@ -51,9 +51,23 @@ func (key *Bip32Key) ChildNumber() uint32 {
 	return key.child_number
 }
 
-// EncodeWIF encodes this key in Bip32 WIF format (dgpv,dgub)
+// EncodeWIF encodes this key in BIP32 extended-key serialization (dgpv/dgub).
+//
+// Historical name: this is NOT classic Wallet Import Format (the single private
+// key "WIF" used by dumpprivkey / importprivkey). For classic WIF of the EC
+// private key, use EncodePrivateWIF. See https://github.com/dogeorg/doge/issues/2
 func (key *Bip32Key) EncodeWIF() string {
 	return EncodeBip32WIF(key)
+}
+
+// EncodePrivateWIF returns classic Wallet Import Format (compressed pubkey
+// marker) for a private Bip32Key. Returns an error if this key is public-only.
+func (key *Bip32Key) EncodePrivateWIF() (string, error) {
+	pk, err := key.GetECPrivKey()
+	if err != nil {
+		return "", err
+	}
+	return EncodeECPrivKeyWIF(pk, key.chain), nil
 }
 
 // Public returns the Public Bip32Key corresponding to a Private Bip32Key.

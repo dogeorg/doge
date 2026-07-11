@@ -1,6 +1,7 @@
 package doge
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -418,5 +419,44 @@ func TestBip32InvalidKeys(t *testing.T) {
 			t.Error(fmt.Errorf("XPrv %v should not decode: %v", it, XPrv))
 		}
 		//log.Printf("%v", err)
+	}
+}
+
+func TestBip32EncodePrivateWIF(t *testing.T) {
+	// EncodePrivateWIF must return classic WIF, not BIP32 extended (dgpv/dgub).
+	// Seed from BIP32 test vector 1.
+	master, err := Bip32MasterFromSeed(hx2b("000102030405060708090a0b0c0d0e0f"), &BitcoinMainChain)
+	if err != nil {
+		t.Fatalf("Bip32MasterFromSeed: %v", err)
+	}
+	classic, err := master.EncodePrivateWIF()
+	if err != nil {
+		t.Fatalf("EncodePrivateWIF: %v", err)
+	}
+	extended := master.EncodeWIF()
+	if classic == extended {
+		t.Fatalf("EncodePrivateWIF returned extended key: %s", classic)
+	}
+	// Classic WIF starts with K/L (compressed mainnet) or 5 (uncompressed); BIP32 xprv with xprv/dgpv
+	if len(classic) < 50 {
+		t.Fatalf("EncodePrivateWIF too short: %s", classic)
+	}
+	pk, chain, err := DecodeECPrivKeyWIF(classic, nil)
+	if err != nil {
+		t.Fatalf("DecodeECPrivKeyWIF failed for EncodePrivateWIF output: %v (%s)", err, classic)
+	}
+	if chain != &BitcoinMainChain {
+		t.Fatalf("wrong chain from decoded WIF")
+	}
+	want, err := master.GetECPrivKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(pk[:], want[:]) {
+		t.Fatalf("decoded key mismatch")
+	}
+	// Public key cannot produce classic private WIF
+	if _, err := master.Public().EncodePrivateWIF(); err == nil {
+		t.Fatalf("expected error encoding private WIF from public key")
 	}
 }
